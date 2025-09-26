@@ -31,22 +31,22 @@ const APP_CONFIG = {
   taskPrefix: 'TSK',
   sprintPrefix: 'SPR',
   
-  // Priorities with new color scheme
+  // Priorities with gentle, eye-friendly colors
   priorities: [
-    { value: 'P0', label: 'Critical', color: 'bg-red-500 text-white', dotColor: 'bg-red-500' },
-    { value: 'P1', label: 'High', color: 'bg-orange-500 text-white', dotColor: 'bg-orange-500' },
-    { value: 'P2', label: 'Medium', color: 'bg-amber-500 text-white', dotColor: 'bg-amber-500' },
-    { value: 'P3', label: 'Low', color: 'bg-blue-500 text-white', dotColor: 'bg-blue-500' },
-    { value: 'P4', label: 'Minor', color: 'bg-slate-500 text-white', dotColor: 'bg-slate-500' },
-    { value: 'P5', label: 'Trivial', color: 'bg-gray-400 text-white', dotColor: 'bg-gray-400' },
+    { value: 'P0', label: 'Critical', color: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300', dotColor: 'bg-rose-400' },
+    { value: 'P1', label: 'High', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300', dotColor: 'bg-orange-400' },
+    { value: 'P2', label: 'Medium', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', dotColor: 'bg-amber-400' },
+    { value: 'P3', label: 'Low', color: 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300', dotColor: 'bg-sky-400' },
+    { value: 'P4', label: 'Minor', color: 'bg-slate-100 text-slate-700 dark:bg-slate-800/50 dark:text-slate-400', dotColor: 'bg-slate-400' },
+    { value: 'P5', label: 'Trivial', color: 'bg-gray-100 text-gray-600 dark:bg-gray-800/50 dark:text-gray-400', dotColor: 'bg-gray-400' },
   ],
   
-  // Status Configuration with updated colors
+  // Status Configuration with gentle, eye-friendly colors
   statuses: [
-    { value: 'todo', label: 'To Do', color: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300', borderColor: 'border-slate-200' },
-    { value: 'in-progress', label: 'In Progress', color: 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300', borderColor: 'border-blue-200' },
-    { value: 'in-review', label: 'In Review', color: 'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300', borderColor: 'border-orange-200' },
-    { value: 'done', label: 'Done', color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300', borderColor: 'border-emerald-200' },
+    { value: 'todo', label: 'To Do', color: 'bg-slate-50 text-slate-600 dark:bg-slate-800/30 dark:text-slate-400', borderColor: 'border-slate-200' },
+    { value: 'in-progress', label: 'In Progress', color: 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400', borderColor: 'border-blue-200' },
+    { value: 'in-review', label: 'In Review', color: 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400', borderColor: 'border-amber-200' },
+    { value: 'done', label: 'Done', color: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400', borderColor: 'border-emerald-200' },
   ],
   
   // Kanban Columns
@@ -100,45 +100,45 @@ const APP_CONFIG = {
 
 const THEME = {
   colors: {
-    // Primary palette
-    navy: '#0F172A',          // Deep Navy Blue
-    electric: '#3B82F6',      // Electric Blue
-    orange: '#FB923C',        // Warm Orange
+    // Primary palette - warmer, softer tones
+    navy: '#2D3748',          // Softer navy blue
+    electric: '#4299E1',      // Gentler blue
+    orange: '#ED8936',        // Warmer, less harsh orange
     
-    // Support colors
-    background: '#FAFBFC',    // Off-white
-    surface: '#FFFFFF',       // Pure white for cards
-    textPrimary: '#0F172A',   // Navy for headers
-    textBody: '#1E293B',      // Charcoal for body
-    textMuted: '#64748B',     // Muted text
-    success: '#10B981',       // Emerald
-    error: '#EF4444',         // Soft red
-    warning: '#F59E0B',       // Amber
+    // Support colors - eye-friendly palette
+    background: '#FEFEFE',    // Very soft off-white
+    surface: '#FDFDFD',       // Gentle white for cards
+    textPrimary: '#2D3748',   // Soft charcoal for headers
+    textBody: '#4A5568',      // Warm gray for body text
+    textMuted: '#718096',     // Gentle muted text
+    success: '#38A169',       // Softer emerald
+    error: '#E53E3E',         // Gentler red
+    warning: '#D69E2E',       // Warmer amber
     
-    // Extended palette
+    // Extended palette - reduced contrast
     border: '#E2E8F0',        // Light border
-    hover: '#F1F5F9',         // Hover state
+    hover: '#F7FAFC',         // Very gentle hover state
   },
   
   components: {
     button: {
-      primary: 'bg-blue-500 text-white hover:bg-blue-600 shadow-sm hover:shadow-md transition-all duration-200',
-      secondary: 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 dark:border-slate-600',
-      danger: 'bg-red-500 text-white hover:bg-red-600 shadow-sm hover:shadow-md transition-all duration-200',
-      success: 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-sm hover:shadow-md transition-all duration-200',
-      ghost: 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800',
-      orange: 'bg-orange-500 text-white hover:bg-orange-600 shadow-sm hover:shadow-md transition-all duration-200',
+      primary: 'bg-blue-400 text-white hover:bg-blue-500 shadow-sm hover:shadow-md transition-all duration-200',
+      secondary: 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 dark:border-slate-500',
+      danger: 'bg-red-400 text-white hover:bg-red-500 shadow-sm hover:shadow-md transition-all duration-200',
+      success: 'bg-emerald-400 text-white hover:bg-emerald-500 shadow-sm hover:shadow-md transition-all duration-200',
+      ghost: 'text-slate-500 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-700',
+      orange: 'bg-orange-400 text-white hover:bg-orange-500 shadow-sm hover:shadow-md transition-all duration-200',
     },
     
     card: 'bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700',
     modal: 'bg-white dark:bg-slate-900 rounded-xl shadow-2xl',
     input: 'border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-800 dark:text-white transition-colors duration-200',
     
-    // New themed components
-    header: 'bg-slate-900 dark:bg-slate-950 text-white shadow-md',
+    // New themed components - gentler colors
+    header: 'bg-slate-700 dark:bg-slate-800 text-white shadow-md',
     nav: {
-      active: 'bg-blue-500 text-white shadow-sm',
-      inactive: 'text-slate-300 hover:text-white hover:bg-slate-800 transition-colors duration-200',
+      active: 'bg-blue-400 text-white shadow-sm',
+      inactive: 'text-slate-200 hover:text-white hover:bg-slate-600 transition-colors duration-200',
     },
     badge: {
       default: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
@@ -1835,9 +1835,9 @@ const FlowCraft: React.FC = () => {
   return (
     <ConfigContext.Provider value={configValue}>
       <div className={`min-h-screen ${darkMode ? 'dark' : ''}`}>
-        <div className="bg-slate-50 dark:bg-slate-950 min-h-screen">
-          {/* Header with Navy Background */}
-          <header className="bg-slate-900 dark:bg-black shadow-lg">
+        <div className="bg-gray-50 dark:bg-slate-900 min-h-screen">
+          {/* Header with Gentle Background */}
+          <header className="bg-slate-700 dark:bg-slate-800 shadow-lg">
             <div className={`${THEME.layout.maxWidth} mx-auto ${THEME.layout.padding}`}>
               <div className="flex items-center justify-between h-16">
                 <div className="flex items-center gap-8">
@@ -1854,8 +1854,8 @@ const FlowCraft: React.FC = () => {
                         onClick={() => setCurrentView(nav.id)}
                         className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
                           currentView === nav.id
-                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
-                            : 'text-slate-300 hover:text-white hover:bg-slate-800'
+                            ? 'bg-blue-400 text-white shadow-lg shadow-blue-400/25'
+                            : 'text-slate-200 hover:text-white hover:bg-slate-600'
                         }`}
                       >
                         {nav.label}
@@ -1874,7 +1874,7 @@ const FlowCraft: React.FC = () => {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={LABELS.searchPlaceholder}
-                        className="pl-9 pr-3 py-2 w-64 bg-slate-800 border border-slate-700 text-white placeholder-slate-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="pl-9 pr-3 py-2 w-64 bg-slate-600 border border-slate-500 text-white placeholder-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent"
                       />
                     </div>
                   )}
@@ -1891,7 +1891,7 @@ const FlowCraft: React.FC = () => {
                   {APP_CONFIG.features.darkMode && (
                     <button
                       onClick={() => setDarkMode(!darkMode)}
-                      className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+                      className="p-2 rounded-lg text-slate-200 hover:text-white hover:bg-slate-600 transition-colors"
                     >
                       {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                     </button>
