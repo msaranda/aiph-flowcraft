@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
-import { Search, Plus, Calendar, ChevronDown, X, Check, AlertCircle, Mic, MicOff, Sun, Moon, Edit2, Trash2, ArrowRight, Play, Square, CheckCircle2, Clock, Users, Filter, LucideIcon, Sparkles, Zap, Eye, RotateCcw, Settings } from 'lucide-react';
+import { Search, Plus, Calendar, ChevronDown, X, Check, AlertCircle, Mic, MicOff, Sun, Moon, Edit2, Trash2, ArrowRight, Play, Square, CheckCircle2, Clock, Users, Filter, LucideIcon, Sparkles, Zap, Eye, RotateCcw, Settings, FileText } from 'lucide-react';
+import ExecutiveBriefing from './components/ExecutiveBriefing';
 
 // ==========================================
 // CONFIGURATION SECTION - Easy to customize
@@ -24,7 +25,7 @@ const APP_CONFIG = {
     bulkActions: false,
     comments: false,
     attachments: false,
-    mitosis: true, // Team splitting feature
+    mitosis: false, // Team splitting feature
   },
   
   // Task Configuration
@@ -57,6 +58,7 @@ const APP_CONFIG = {
     { id: 'issues', label: 'Issues', enabled: true },
     { id: 'current-sprint', label: 'Current Sprint', enabled: true },
     { id: 'sprints', label: 'Sprints', enabled: true },
+    { id: 'executive-briefing', label: 'Executive Briefing', enabled: true },
   ],
   
   // Table Columns Configuration
@@ -420,6 +422,8 @@ interface TeamSizeIndicatorProps {
 const TeamSizeIndicator: React.FC<TeamSizeIndicatorProps> = ({ teamSize, onClick }) => {
   const { config } = useConfig();
   
+  if (!config.features.mitosis || !config.mitosis) return null;
+  
   const getIndicatorState = () => {
     if (teamSize >= config.mitosis.teamSizeThresholds.red.min) {
       return { color: 'bg-red-500 text-white', emoji: '🧬', pulse: 'animate-pulse' };
@@ -460,6 +464,7 @@ interface TeamHealthWidgetProps {
 const TeamHealthWidget: React.FC<TeamHealthWidgetProps> = ({ teamSize, onPreviewSplit }) => {
   const { config } = useConfig();
   
+  if (!config.features.mitosis || !config.mitosis) return null;
   if (teamSize < config.mitosis.widgetAppearThreshold) return null;
   
   const healthScore = Math.max(20, 100 - (teamSize - 15) * 3);
@@ -1087,8 +1092,8 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
 // ==========================================
 
 const FlowCraft: React.FC = () => {
-  // Mock team data for Mitosis
-  const mockTeamMembers: TeamMember[] = [
+  // Mock team data for Mitosis (only if feature is enabled)
+  const mockTeamMembers: TeamMember[] = APP_CONFIG.features.mitosis ? [
     { id: '1', name: 'Alice Chen', role: 'Frontend Lead' },
     { id: '2', name: 'Bob Smith', role: 'Designer' },
     { id: '3', name: 'Carol Davis', role: 'Backend Lead' },
@@ -1112,9 +1117,9 @@ const FlowCraft: React.FC = () => {
     { id: '21', name: 'Uma Patel', role: 'Frontend Dev' },
     { id: '22', name: 'Victor Chen', role: 'Backend Dev' },
     { id: '23', name: 'Wendy Davis', role: 'Full Stack' },
-  ];
+  ] : [];
 
-  const mockSplitAnalysis: SplitAnalysis = {
+  const mockSplitAnalysis: SplitAnalysis | null = APP_CONFIG.features.mitosis ? {
     groups: [
       {
         id: 'cell-a',
@@ -1148,7 +1153,7 @@ const FlowCraft: React.FC = () => {
       blockerReduction: 62,
       happinessIncrease: 31
     }
-  };
+  } : null;
 
   // Sample data with realistic content
   const initialIssues: Issue[] = [
@@ -1180,8 +1185,8 @@ const FlowCraft: React.FC = () => {
   const [draggedItem, setDraggedItem] = useState<Issue | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   
-  // Mitosis state
-  const [teamSize] = useState<number>(23); // Mock team size that triggers Mitosis
+  // Mitosis state (only if feature is enabled)
+  const [teamSize] = useState<number>(APP_CONFIG.features.mitosis ? 23 : 0); // Mock team size that triggers Mitosis
   const [isSplitPreviewOpen, setIsSplitPreviewOpen] = useState<boolean>(false);
   const [isSplitConfigOpen, setIsSplitConfigOpen] = useState<boolean>(false);
   const [isEmbassyViewOpen, setIsEmbassyViewOpen] = useState<boolean>(false);
@@ -1219,23 +1224,27 @@ const FlowCraft: React.FC = () => {
     }
   };
   
-  // Mitosis handlers
+  // Mitosis handlers (only execute if feature is enabled)
   const handleTeamSizeClick = () => {
+    if (!APP_CONFIG.features.mitosis || !APP_CONFIG.mitosis) return;
     if (teamSize >= APP_CONFIG.mitosis.widgetAppearThreshold) {
       setIsSplitPreviewOpen(true);
     }
   };
   
   const handlePreviewSplit = () => {
+    if (!APP_CONFIG.features.mitosis) return;
     setIsSplitPreviewOpen(true);
   };
   
   const handleTrySplit = () => {
+    if (!APP_CONFIG.features.mitosis) return;
     setIsSplitPreviewOpen(false);
     setIsSplitConfigOpen(true);
   };
   
   const handleStartPreview = (config: any) => {
+    if (!APP_CONFIG.features.mitosis || !APP_CONFIG.mitosis) return;
     const newMitosisState: MitosisState = {
       isActive: true,
       mode: config.mode,
@@ -1255,10 +1264,12 @@ const FlowCraft: React.FC = () => {
   };
   
   const handleSwitchCell = (cellId: string) => {
+    if (!APP_CONFIG.features.mitosis) return;
     setCurrentCellId(cellId);
   };
   
   const handleMergeTeams = () => {
+    if (!APP_CONFIG.features.mitosis) return;
     if (window.confirm('Are you sure you want to merge the teams back together?')) {
       setMitosisState(null);
       setCurrentView('issues');
@@ -1266,6 +1277,7 @@ const FlowCraft: React.FC = () => {
   };
   
   const getCurrentCell = (): TeamCell | null => {
+    if (!APP_CONFIG.features.mitosis) return null;
     return mitosisState?.cells.find(cell => cell.id === currentCellId) || null;
   };
   
@@ -1906,7 +1918,10 @@ const FlowCraft: React.FC = () => {
             {currentView === 'issues' && renderIssuesView()}
             {currentView === 'current-sprint' && APP_CONFIG.features.kanban && renderKanbanView()}
             {currentView === 'sprints' && APP_CONFIG.features.sprints && renderSprintsView()}
-            {currentView === 'cell-workspace' && mitosisState && getCurrentCell() && (
+            {currentView === 'executive-briefing' && (
+              <ExecutiveBriefing issues={issues} sprints={sprints} />
+            )}
+            {APP_CONFIG.features.mitosis && currentView === 'cell-workspace' && mitosisState && getCurrentCell() && (
               <CellWorkspace
                 mitosisState={mitosisState}
                 currentCell={getCurrentCell()!}
@@ -1956,7 +1971,7 @@ const FlowCraft: React.FC = () => {
           </Modal>
           
           {/* Mitosis Modals */}
-          {APP_CONFIG.features.mitosis && (
+          {APP_CONFIG.features.mitosis && mockSplitAnalysis && (
             <>
               <SplitPreviewModal
                 isOpen={isSplitPreviewOpen}
