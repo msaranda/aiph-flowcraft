@@ -129,17 +129,18 @@ export function generateFallbackBriefing(data: BriefingData) {
   const today = new Date();
   const weekOf = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   
-  // Find blocked tasks
+  // Find blocked tasks (P0/P1 only)
   const blockedTasks = data.teams.flatMap(team => 
-    team.tasks.filter(t => t.blocked).map(t => ({ ...t, teamName: team.name }))
+    team.tasks.filter(t => t.blocked && (t.priority === 'critical' || t.priority === 'high'))
+      .map(t => ({ ...t, teamName: team.name }))
   );
   
-  // Find overdue tasks
+  // Find overdue tasks with days calculation
   const overdueTasks = data.teams.flatMap(team =>
     team.tasks.filter(t => {
       const dueDate = new Date(t.dueDate);
       return dueDate < today && t.status !== 'done';
-    }).map(t => ({ ...t, teamName: team.name }))
+    }).map(t => ({ ...t, teamName: team.name, daysOverdue: getDaysOverdue(t.dueDate) }))
   );
   
   // Find critical incomplete tasks
@@ -153,16 +154,74 @@ export function generateFallbackBriefing(data: BriefingData) {
     team.tasks.filter(t => t.status === 'done').map(t => ({ ...t, teamName: team.name }))
   );
   
-  // Build top risks
-  const topRisks = blockedTasks.slice(0, 3).map(task => ({
-    title: `${task.title} BLOCKED`,
-    issue: task.blockerReason || 'Awaiting dependencies',
-    impact: task.priority === 'critical' ? 'Release timeline at risk' : 'May delay dependent work',
-    owner: task.owner,
-    nextStep: 'Review and resolve blocker'
-  }));
+  // STRICT RISK CRITERIA:
+  // 1. P0/P1 tasks that are BOTH blocked AND overdue
+  // 2. P0 tasks overdue by >7 days (even if not blocked)
+  // 3. Tasks blocking other work (in-progress critical tasks)
   
-  // Build attention needed
+  const topRiskCandidates: Array<{
+    title: string;
+    issue: string;
+    impact: string;
+    owner: string;
+    nextStep: string;
+    priority: number; // For sorting - lower is higher priority
+  }> = [];
+  
+  // Category 1: Blocked AND overdue P0/P1 tasks (highest priority)
+  blockedTasks.forEach(task => {
+    const daysOverdue = getDaysOverdue(task.dueDate);
+    if (daysOverdue > 0) {
+      topRiskCandidates.push({
+        title: `${task.title} BLOCKED`,
+        issue: task.blockerReason || 'Blocked and overdue',
+        impact: task.priority === 'critical' ? 'Release timeline at risk' : 'Sprint completion at risk',
+        owner: task.owner,
+        nextStep: 'Resolve blocker immediately',
+        priority: 1
+      });
+    }
+  });
+  
+  // Category 2: P0 tasks overdue by >7 days (even if not blocked)
+  overdueTasks
+    .filter(t => t.priority === 'critical' && t.daysOverdue > 7)
+    .forEach(task => {
+      // Avoid duplicates
+      if (!topRiskCandidates.some(r => r.title.includes(task.title))) {
+        topRiskCandidates.push({
+          title: `${task.title} critically overdue`,
+          issue: `${task.daysOverdue} days past deadline`,
+          impact: 'Release timeline at risk',
+          owner: task.owner,
+          nextStep: 'Escalate and reassess timeline',
+          priority: 2
+        });
+      }
+    });
+  
+  // Category 3: Blocked P0/P1 tasks (even if not overdue yet)
+  blockedTasks.forEach(task => {
+    if (!topRiskCandidates.some(r => r.title.includes(task.title))) {
+      topRiskCandidates.push({
+        title: `${task.title} BLOCKED`,
+        issue: task.blockerReason || 'Awaiting dependencies',
+        impact: task.priority === 'critical' ? 'May delay release' : 'May delay sprint',
+        owner: task.owner,
+        nextStep: 'Review and resolve blocker',
+        priority: 3
+      });
+    }
+  });
+  
+  // Sort by priority and take top 3
+  topRiskCandidates.sort((a, b) => a.priority - b.priority);
+  const topRisks = topRiskCandidates.slice(0, 3).map(({ priority, ...rest }) => rest);
+  
+  // Build attention needed (less critical items)
+  // - Capacity issues
+  // - Overdue P0 tasks (< 7 days) or P1/P2 overdue tasks
+  // - Items approaching deadline
   const attentionNeeded = [
     ...data.teams.filter(t => t.capacity > 100).map(team => ({
       title: `${team.name} team at ${team.capacity}% capacity`,
@@ -170,12 +229,27 @@ export function generateFallbackBriefing(data: BriefingData) {
       recommendation: 'Consider redistributing tasks or pushing to next sprint',
       impact: 'Risk of burnout and quality issues'
     })),
-    ...overdueTasks.slice(0, 3).map(task => ({
-      title: `${task.title} is ${getDaysOverdue(task.dueDate)} days overdue`,
-      context: `Owner: ${task.owner}`,
-      recommendation: 'Review priority and timeline',
-      impact: 'May affect downstream deliverables'
-    }))
+    // P0 tasks overdue by 1-7 days (not critical enough for top risks)
+    ...overdueTasks
+      .filter(t => t.priority === 'critical' && t.daysOverdue > 0 && t.daysOverdue <= 7)
+      .filter(t => !topRiskCandidates.some(r => r.title.includes(t.title)))
+      .slice(0, 2)
+      .map(task => ({
+        title: `${task.title} is ${task.daysOverdue} days overdue`,
+        context: `Owner: ${task.owner}, Priority: Critical`,
+        recommendation: 'Review blockers and timeline',
+        impact: 'May affect upcoming milestones'
+      })),
+    // P1/P2 overdue tasks
+    ...overdueTasks
+      .filter(t => (t.priority === 'high' || t.priority === 'medium') && t.daysOverdue > 3)
+      .slice(0, 2)
+      .map(task => ({
+        title: `${task.title} is ${task.daysOverdue} days overdue`,
+        context: `Owner: ${task.owner}`,
+        recommendation: 'Review priority and timeline',
+        impact: 'May affect downstream deliverables'
+      }))
   ].slice(0, 5);
   
   // Build on track items

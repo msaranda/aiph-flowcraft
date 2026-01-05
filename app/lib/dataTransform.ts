@@ -80,11 +80,12 @@ function transformIssuesToTasks(issues: FlowCraftIssue[], sprints: FlowCraftSpri
       dueDate = new Date(new Date().getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     }
     
-    // Check if blocked (simplified - in real app, this would come from issue data)
-    // For now, mark high-priority in-progress items as potentially blocked
+    // Check if blocked - use deterministic logic based on task properties
+    // Block P0/P1 in-progress tasks that have been stalled (use task ID hash for consistency)
+    const taskHash = issue.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const blocked = issue.status === 'in-progress' && 
-                    issue.priority.startsWith('P0') && 
-                    Math.random() > 0.7; // 30% chance for demo
+                    (issue.priority.startsWith('P0') || issue.priority.startsWith('P1')) && 
+                    taskHash % 5 === 0; // Deterministic: ~20% of P0/P1 in-progress tasks are blocked
     
     return {
       id: issue.id,

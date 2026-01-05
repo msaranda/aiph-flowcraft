@@ -1155,22 +1155,76 @@ const FlowCraft: React.FC = () => {
     }
   } : null;
 
-  // Sample data with realistic content
+  // Helper to generate dates relative to today
+  const getRelativeDate = (daysOffset: number): string => {
+    const date = new Date();
+    date.setDate(date.getDate() + daysOffset);
+    return date.toISOString().split('T')[0];
+  };
+
+  // Sample data with realistic content - shows a project with slipped timelines
   const initialIssues: Issue[] = [
-    { id: 'TSK-001', title: 'Implement user authentication', description: 'Add OAuth2 authentication with Google and GitHub providers', status: 'done', priority: 'P0', assignee: 'Alice Chen', sprintId: 'SPR-001', createdAt: '2024-01-15' },
-    { id: 'TSK-002', title: 'Design system components', description: 'Create reusable Button, Input, and Card components', status: 'in-review', priority: 'P1', assignee: 'Bob Smith', sprintId: 'SPR-001', createdAt: '2024-01-16' },
-    { id: 'TSK-003', title: 'API rate limiting', description: 'Implement rate limiting for public endpoints', status: 'in-progress', priority: 'P0', assignee: 'Carol Davis', sprintId: 'SPR-002', createdAt: '2024-01-17' },
-    { id: 'TSK-004', title: 'Database migration scripts', description: 'Create migration scripts for v2.0', status: 'todo', priority: 'P2', assignee: 'David Lee', sprintId: 'SPR-002', createdAt: '2024-01-18' },
-    { id: 'TSK-005', title: 'Mobile responsive design', description: 'Ensure all pages work on mobile', status: 'todo', priority: 'P1', assignee: 'Eve Johnson', sprintId: 'SPR-002', createdAt: '2024-01-19' },
-    { id: 'TSK-006', title: 'Performance optimization', description: 'Optimize bundle size and loading', status: 'todo', priority: 'P3', assignee: 'Frank Wilson', sprintId: null, createdAt: '2024-01-20' },
-    { id: 'TSK-007', title: 'Unit test coverage', description: 'Achieve 80% code coverage', status: 'todo', priority: 'P2', assignee: 'Grace Brown', sprintId: null, createdAt: '2024-01-21' },
-    { id: 'TSK-008', title: 'Documentation update', description: 'Update API documentation', status: 'todo', priority: 'P4', assignee: 'Henry Taylor', sprintId: null, createdAt: '2024-01-22' },
+    // Sprint 1 - Incomplete (ended 5 weeks ago, only 4/7 completed, 3 tasks carried over)
+    { id: 'TSK-001', title: 'Implement user authentication', description: 'Add OAuth2 authentication with Google and GitHub providers', status: 'done', priority: 'P0', assignee: 'Alice Chen', sprintId: 'SPR-001', createdAt: getRelativeDate(-56) },
+    { id: 'TSK-002', title: 'Design system components', description: 'Create reusable Button, Input, and Card components', status: 'done', priority: 'P1', assignee: 'Bob Smith', sprintId: 'SPR-001', createdAt: getRelativeDate(-55) },
+    { id: 'TSK-003', title: 'Set up CI/CD pipeline', description: 'Configure GitHub Actions for automated testing and deployment', status: 'done', priority: 'P1', assignee: 'Carol Davis', sprintId: 'SPR-001', createdAt: getRelativeDate(-54) },
+    { id: 'TSK-004', title: 'Database schema design', description: 'Design initial database schema for user and project entities', status: 'done', priority: 'P0', assignee: 'David Lee', sprintId: 'SPR-001', createdAt: getRelativeDate(-53) },
+    { id: 'TSK-005', title: 'Initial API endpoints', description: 'Create REST API for core resources - still missing 3 endpoints', status: 'in-progress', priority: 'P1', assignee: 'Eve Johnson', sprintId: 'SPR-001', createdAt: getRelativeDate(-52) },
+    { id: 'TSK-006', title: 'Environment configuration', description: 'Set up dev/staging/prod environments - BLOCKED by AWS access', status: 'in-progress', priority: 'P0', assignee: 'Frank Wilson', sprintId: 'SPR-001', createdAt: getRelativeDate(-51) },
+    { id: 'TSK-007', title: 'Logging infrastructure', description: 'Centralized logging with ELK stack - deferred to next sprint', status: 'todo', priority: 'P2', assignee: 'Grace Brown', sprintId: 'SPR-001', createdAt: getRelativeDate(-50) },
+    
+    // Sprint 2 - Incomplete (ended 3 weeks ago, only 3/8 completed, 5 tasks spilled over)
+    { id: 'TSK-008', title: 'Dashboard layout', description: 'Implement main dashboard with widgets', status: 'done', priority: 'P1', assignee: 'Henry Taylor', sprintId: 'SPR-002', createdAt: getRelativeDate(-42) },
+    { id: 'TSK-009', title: 'User profile page', description: 'Create user profile settings and preferences', status: 'done', priority: 'P2', assignee: 'Alice Chen', sprintId: 'SPR-002', createdAt: getRelativeDate(-41) },
+    { id: 'TSK-010', title: 'Search functionality', description: 'Add global search across all entities', status: 'done', priority: 'P2', assignee: 'Bob Smith', sprintId: 'SPR-002', createdAt: getRelativeDate(-40) },
+    { id: 'TSK-011', title: 'Notification system', description: 'Implement in-app and email notifications - BLOCKED by third-party API issues', status: 'in-progress', priority: 'P0', assignee: 'Carol Davis', sprintId: 'SPR-002', createdAt: getRelativeDate(-39) },
+    { id: 'TSK-012', title: 'Data export feature', description: 'Allow exporting data to CSV and JSON - waiting on schema changes', status: 'in-review', priority: 'P1', assignee: 'David Lee', sprintId: 'SPR-002', createdAt: getRelativeDate(-38) },
+    { id: 'TSK-013', title: 'Email integration', description: 'SMTP configuration and email templates - BLOCKED by security review', status: 'in-progress', priority: 'P0', assignee: 'Eve Johnson', sprintId: 'SPR-002', createdAt: getRelativeDate(-37) },
+    { id: 'TSK-014', title: 'File upload system', description: 'Handle file uploads with validation - depends on storage config', status: 'in-progress', priority: 'P1', assignee: 'Frank Wilson', sprintId: 'SPR-002', createdAt: getRelativeDate(-36) },
+    { id: 'TSK-015', title: 'Real-time updates', description: 'WebSocket integration for live updates - complex, needs more time', status: 'todo', priority: 'P2', assignee: 'Grace Brown', sprintId: 'SPR-002', createdAt: getRelativeDate(-35) },
+    
+    // Sprint 3 - Active but severely behind (started 2 weeks ago, should end in 3 days, only 1/10 completed)
+    // Includes carryover from Sprint 1 and Sprint 2
+    { id: 'TSK-016', title: 'API rate limiting', description: 'Implement rate limiting for public endpoints - critical for launch', status: 'in-progress', priority: 'P0', assignee: 'David Lee', sprintId: 'SPR-003', createdAt: getRelativeDate(-14) },
+    { id: 'TSK-017', title: 'Mobile responsive design', description: 'Ensure all pages work on mobile devices', status: 'in-progress', priority: 'P1', assignee: 'Eve Johnson', sprintId: 'SPR-003', createdAt: getRelativeDate(-13) },
+    { id: 'TSK-018', title: 'Accessibility audit', description: 'Ensure WCAG 2.1 AA compliance - depends on design freeze', status: 'todo', priority: 'P1', assignee: 'Frank Wilson', sprintId: 'SPR-003', createdAt: getRelativeDate(-12) },
+    { id: 'TSK-019', title: 'Error handling improvements', description: 'Improve error messages and recovery flows', status: 'todo', priority: 'P2', assignee: 'Grace Brown', sprintId: 'SPR-003', createdAt: getRelativeDate(-11) },
+    { id: 'TSK-020', title: 'Performance monitoring', description: 'Add APM integration for performance tracking', status: 'todo', priority: 'P2', assignee: 'Henry Taylor', sprintId: 'SPR-003', createdAt: getRelativeDate(-10) },
+    { id: 'TSK-021', title: 'Security headers', description: 'Implement security headers and CSP - BLOCKED waiting for infra team', status: 'in-progress', priority: 'P0', assignee: 'Alice Chen', sprintId: 'SPR-003', createdAt: getRelativeDate(-9) },
+    { id: 'TSK-022', title: 'Payment gateway integration', description: 'Stripe integration for subscriptions - critical path', status: 'in-progress', priority: 'P0', assignee: 'Bob Smith', sprintId: 'SPR-003', createdAt: getRelativeDate(-8) },
+    { id: 'TSK-023', title: 'User onboarding flow', description: 'First-time user experience and tutorial', status: 'done', priority: 'P1', assignee: 'Carol Davis', sprintId: 'SPR-003', createdAt: getRelativeDate(-7) },
+    { id: 'TSK-024', title: 'Complete API endpoints', description: 'Finish remaining 3 endpoints from Sprint 1', status: 'in-progress', priority: 'P1', assignee: 'Eve Johnson', sprintId: 'SPR-003', createdAt: getRelativeDate(-6) },
+    { id: 'TSK-025', title: 'Environment setup', description: 'Complete AWS environment configuration from Sprint 1', status: 'in-progress', priority: 'P0', assignee: 'Frank Wilson', sprintId: 'SPR-003', createdAt: getRelativeDate(-5) },
+    
+    // Sprint 4 - Planned but already has carryover concerns (will likely absorb Sprint 3 spillover)
+    { id: 'TSK-026', title: 'Advanced filtering', description: 'Add complex filter builder for reports', status: 'todo', priority: 'P2', assignee: 'David Lee', sprintId: 'SPR-004', createdAt: getRelativeDate(-5) },
+    { id: 'TSK-027', title: 'Bulk operations', description: 'Enable bulk edit and delete for items', status: 'todo', priority: 'P2', assignee: 'Eve Johnson', sprintId: 'SPR-004', createdAt: getRelativeDate(-4) },
+    { id: 'TSK-028', title: 'Keyboard shortcuts', description: 'Add keyboard navigation and shortcuts', status: 'todo', priority: 'P3', assignee: 'Frank Wilson', sprintId: 'SPR-004', createdAt: getRelativeDate(-3) },
+    { id: 'TSK-029', title: 'Dark mode polish', description: 'Refine dark mode color palette', status: 'todo', priority: 'P3', assignee: 'Grace Brown', sprintId: 'SPR-004', createdAt: getRelativeDate(-2) },
+    { id: 'TSK-030', title: 'Audit logging', description: 'Track all user actions for compliance', status: 'todo', priority: 'P1', assignee: 'Henry Taylor', sprintId: 'SPR-004', createdAt: getRelativeDate(-1) },
+    
+    // Sprint 5 - Planned
+    { id: 'TSK-031', title: 'API v2 design', description: 'Design next version of API with GraphQL', status: 'todo', priority: 'P1', assignee: 'Alice Chen', sprintId: 'SPR-005', createdAt: getRelativeDate(-1) },
+    { id: 'TSK-032', title: 'Webhooks system', description: 'Allow users to configure webhooks for events', status: 'todo', priority: 'P2', assignee: 'Bob Smith', sprintId: 'SPR-005', createdAt: getRelativeDate(-1) },
+    { id: 'TSK-033', title: 'Team permissions', description: 'Implement role-based access control', status: 'todo', priority: 'P1', assignee: 'Carol Davis', sprintId: 'SPR-005', createdAt: getRelativeDate(-1) },
+    
+    // Backlog - mix of priorities, includes tasks deferred from earlier sprints
+    { id: 'TSK-034', title: 'Logging infrastructure', description: 'Centralized logging with ELK stack - deferred from Sprint 1', status: 'todo', priority: 'P2', assignee: 'Grace Brown', sprintId: null, createdAt: getRelativeDate(-50) },
+    { id: 'TSK-035', title: 'Real-time updates', description: 'WebSocket integration for live updates - deferred from Sprint 2', status: 'todo', priority: 'P2', assignee: 'Grace Brown', sprintId: null, createdAt: getRelativeDate(-35) },
+    { id: 'TSK-036', title: 'Performance optimization', description: 'Optimize bundle size and loading times', status: 'todo', priority: 'P3', assignee: 'David Lee', sprintId: null, createdAt: getRelativeDate(-20) },
+    { id: 'TSK-037', title: 'Unit test coverage', description: 'Achieve 80% code coverage - tech debt from Sprint 1', status: 'in-progress', priority: 'P2', assignee: 'Eve Johnson', sprintId: null, createdAt: getRelativeDate(-45) },
+    { id: 'TSK-038', title: 'Documentation update', description: 'Update API documentation with examples', status: 'todo', priority: 'P4', assignee: 'Frank Wilson', sprintId: null, createdAt: getRelativeDate(-18) },
+    { id: 'TSK-039', title: 'Mobile app research', description: 'Research React Native for mobile app', status: 'todo', priority: 'P4', assignee: 'Grace Brown', sprintId: null, createdAt: getRelativeDate(-17) },
+    { id: 'TSK-040', title: 'Analytics dashboard', description: 'Build analytics dashboard with charts', status: 'todo', priority: 'P3', assignee: 'Henry Taylor', sprintId: null, createdAt: getRelativeDate(-16) },
+    { id: 'TSK-041', title: 'Database optimization', description: 'Add indexes and optimize slow queries - URGENT tech debt', status: 'in-progress', priority: 'P1', assignee: 'Alice Chen', sprintId: null, createdAt: getRelativeDate(-30) },
   ];
   
   const initialSprints: Sprint[] = [
-    { id: 'SPR-001', name: 'Sprint 1 - Foundation', status: 'completed', startDate: '2024-01-15', endDate: '2024-01-29', createdAt: '2024-01-14' },
-    { id: 'SPR-002', name: 'Sprint 2 - Core Features', status: 'active', startDate: '2024-01-30', endDate: '2024-02-13', createdAt: '2024-01-28' },
-    { id: 'SPR-003', name: 'Sprint 3 - Optimization', status: 'planned', startDate: '2024-02-14', endDate: '2024-02-28', createdAt: '2024-02-01' },
+    { id: 'SPR-001', name: 'Sprint 1 - Foundation', status: 'completed', startDate: getRelativeDate(-56), endDate: getRelativeDate(-43), createdAt: getRelativeDate(-57) },
+    { id: 'SPR-002', name: 'Sprint 2 - Core Features', status: 'completed', startDate: getRelativeDate(-42), endDate: getRelativeDate(-29), createdAt: getRelativeDate(-43) },
+    { id: 'SPR-003', name: 'Sprint 3 - Launch Prep', status: 'active', startDate: getRelativeDate(-14), endDate: getRelativeDate(3), createdAt: getRelativeDate(-15) },
+    { id: 'SPR-004', name: 'Sprint 4 - Post-Launch', status: 'planned', startDate: getRelativeDate(4), endDate: getRelativeDate(17), createdAt: getRelativeDate(-1) },
+    { id: 'SPR-005', name: 'Sprint 5 - API v2', status: 'planned', startDate: getRelativeDate(18), endDate: getRelativeDate(31), createdAt: getRelativeDate(-1) },
   ];
   
   // Core state
@@ -1184,6 +1238,9 @@ const FlowCraft: React.FC = () => {
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null);
   const [draggedItem, setDraggedItem] = useState<Issue | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  
+  // Sprint viewing state
+  const [viewingSprintId, setViewingSprintId] = useState<string | null>(null);
   
   // Mitosis state (only if feature is enabled)
   const [teamSize] = useState<number>(APP_CONFIG.features.mitosis ? 23 : 0); // Mock team size that triggers Mitosis
@@ -1788,6 +1845,16 @@ const FlowCraft: React.FC = () => {
                       {sprint.status}
                     </span>
                     
+                    {/* View button for all sprints */}
+                    <Button 
+                      onClick={() => setViewingSprintId(sprint.id)} 
+                      size="sm" 
+                      variant="ghost" 
+                      icon={Eye}
+                    >
+                      View
+                    </Button>
+                    
                     {sprint.status === 'planned' && (
                       <Button onClick={() => startSprint(sprint.id)} size="sm" variant="success" icon={Play}>
                         Start
@@ -1844,6 +1911,149 @@ const FlowCraft: React.FC = () => {
     );
   };
   
+  // Render Sprint Detail View (Read-Only Kanban for any sprint)
+  const renderSprintDetailView = (sprintId: string) => {
+    const sprint = sprints.find(s => s.id === sprintId);
+    if (!sprint) return null;
+    
+    const sprintIssues = issues.filter(issue => issue.sprintId === sprintId);
+    const completedIssues = sprintIssues.filter(issue => issue.status === 'done');
+    const progress = sprintIssues.length > 0 
+      ? Math.round((completedIssues.length / sprintIssues.length) * 100) 
+      : 0;
+    const isReadOnly = sprint.status !== 'active';
+    
+    return (
+      <div className="space-y-6">
+        {/* Sprint Header */}
+        <Card className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setViewingSprintId(null)}
+                className="text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+              >
+                <ArrowRight className="w-5 h-5 rotate-180" />
+              </button>
+              <div>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                    {sprint.name}
+                  </h2>
+                  <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                    sprint.status === 'active' 
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
+                      : sprint.status === 'completed'
+                      ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'
+                  }`}>
+                    {sprint.status}
+                  </span>
+                  {isReadOnly && (
+                    <span className="inline-flex px-2 py-1 text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 rounded">
+                      Read-Only
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  {sprint.startDate} - {sprint.endDate} • {progress}% complete ({completedIssues.length}/{sprintIssues.length} tasks)
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                <Zap className="w-4 h-4 mr-1" />
+                {sprintIssues.length} issues
+              </span>
+              {sprint.status === 'active' && (
+                <Button onClick={() => endSprint(sprint.id)} variant="danger" size="sm">
+                  End Sprint
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
+        
+        {/* Kanban Board (Read-Only for non-active sprints) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {APP_CONFIG.kanbanColumns.map((columnId) => {
+            const columnIssues = sprintIssues.filter(issue => issue.status === columnId);
+            const statusConfig = APP_CONFIG.statuses.find(s => s.value === columnId);
+            
+            return (
+              <div
+                key={columnId}
+                className={`bg-slate-50 dark:bg-slate-900 rounded-xl p-4 ${
+                  isReadOnly ? 'opacity-90' : ''
+                } ${!isReadOnly && dragOverColumn === columnId ? 'ring-2 ring-orange-500 bg-orange-50 dark:bg-orange-950' : ''}`}
+                onDragOver={!isReadOnly ? (e) => {
+                  e.preventDefault();
+                  setDragOverColumn(columnId);
+                } : undefined}
+                onDrop={!isReadOnly ? (e) => handleDrop(e, columnId) : undefined}
+                onDragLeave={!isReadOnly ? () => setDragOverColumn(null) : undefined}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                    {statusConfig?.label}
+                  </h3>
+                  <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                    {columnIssues.length}
+                  </span>
+                </div>
+                
+                <div className="space-y-3 min-h-[200px]">
+                  {columnIssues.map((issue) => (
+                    <Card
+                      key={issue.id}
+                      hover={!isReadOnly}
+                      className={`p-4 ${!isReadOnly ? 'cursor-move' : 'cursor-default'} ${draggedItem?.id === issue.id ? 'opacity-50' : ''}`}
+                    >
+                      <div
+                        draggable={!isReadOnly && APP_CONFIG.features.dragAndDrop}
+                        onDragStart={!isReadOnly ? (e) => handleDragStart(e, issue) : undefined}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                            {issue.id}
+                          </span>
+                          <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded ${getPriorityColor(issue.priority)}`}>
+                            {issue.priority}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
+                          {issue.title}
+                        </h4>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
+                            {issue.assignee}
+                          </span>
+                          {!isReadOnly && (
+                            <button
+                              onClick={() => setEditingIssue(issue)}
+                              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                  {columnIssues.length === 0 && (
+                    <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">
+                      No tasks
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+  
   return (
     <ConfigContext.Provider value={configValue}>
       <div className={`min-h-screen ${darkMode ? 'dark' : ''}`}>
@@ -1863,7 +2073,7 @@ const FlowCraft: React.FC = () => {
                     {APP_CONFIG.navigation.filter(n => n.enabled).map(nav => (
                       <button
                         key={nav.id}
-                        onClick={() => setCurrentView(nav.id)}
+                        onClick={() => { setCurrentView(nav.id); setViewingSprintId(null); }}
                         className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
                           currentView === nav.id
                             ? 'bg-blue-400 text-white shadow-lg shadow-blue-400/25'
@@ -1917,7 +2127,9 @@ const FlowCraft: React.FC = () => {
           <main className={`${THEME.layout.maxWidth} mx-auto ${THEME.layout.padding} py-8`}>
             {currentView === 'issues' && renderIssuesView()}
             {currentView === 'current-sprint' && APP_CONFIG.features.kanban && renderKanbanView()}
-            {currentView === 'sprints' && APP_CONFIG.features.sprints && renderSprintsView()}
+            {currentView === 'sprints' && APP_CONFIG.features.sprints && (
+              viewingSprintId ? renderSprintDetailView(viewingSprintId) : renderSprintsView()
+            )}
             {currentView === 'executive-briefing' && (
               <ExecutiveBriefing issues={issues} sprints={sprints} />
             )}
