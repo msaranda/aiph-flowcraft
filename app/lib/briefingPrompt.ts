@@ -125,7 +125,7 @@ Important: Return ONLY valid JSON, no markdown formatting or extra text.`;
 }
 
 // Fallback briefing when LLM fails or for demo purposes
-export function generateFallbackBriefing(data: BriefingData) {
+export function generateFallbackBriefing(data: BriefingData): ExecutiveBriefingOutput {
   const today = new Date();
   const weekOf = today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
   
@@ -259,15 +259,22 @@ export function generateFallbackBriefing(data: BriefingData) {
   }));
   
   // Build team health
-  const teamHealth = data.teams.map(team => ({
-    team: team.name,
-    headcount: team.members.length,
-    capacity: team.capacity,
-    velocity: `${team.velocity} points/sprint`,
-    blockers: team.blockerCount,
-    status: team.capacity > 100 ? 'warning' : team.blockerCount > 2 ? 'warning' : 'healthy',
-    notes: team.capacity > 100 ? 'Overloaded' : team.blockerCount > 0 ? `${team.blockerCount} blockers to resolve` : ''
-  }));
+  const teamHealth: BriefingTeamHealth[] = data.teams.map(team => {
+    const status: 'healthy' | 'warning' | 'critical' = 
+      team.capacity > 100 ? 'warning' : 
+      team.blockerCount > 2 ? 'warning' : 
+      'healthy';
+    
+    return {
+      team: team.name,
+      headcount: team.members.length,
+      capacity: team.capacity,
+      velocity: `${team.velocity} points/sprint`,
+      blockers: team.blockerCount,
+      status,
+      notes: team.capacity > 100 ? 'Overloaded' : team.blockerCount > 0 ? `${team.blockerCount} blockers to resolve` : ''
+    };
+  });
   
   // Generate summary
   const criticalBlockers = blockedTasks.filter(t => t.priority === 'critical').length;
