@@ -67,6 +67,7 @@ const APP_CONFIG = {
     { key: 'title', label: 'Title', sortable: true },
     { key: 'priority', label: 'Priority', sortable: true },
     { key: 'status', label: 'Status', sortable: true },
+    { key: 'dueDate', label: 'Deadline', sortable: true },
     { key: 'assignee', label: 'Assignee', sortable: true },
     { key: 'sprint', label: 'Sprint', sortable: false },
     { key: 'actions', label: 'Actions', sortable: false },
@@ -233,6 +234,7 @@ interface Issue {
   assignee: string;
   sprintId: string | null;
   createdAt: string;
+  dueDate: string; // Task's own deadline, independent of sprint
   [key: string]: any;
 }
 
@@ -319,6 +321,10 @@ const useIssueManagement = (initialIssues: Issue[]) => {
   };
   
   const createIssue = (formData: Partial<Issue>): Issue => {
+    // Default due date is 14 days from now
+    const defaultDueDate = new Date();
+    defaultDueDate.setDate(defaultDueDate.getDate() + 14);
+    
     const newIssue: Issue = {
       id: generateIssueId(),
       title: formData.title || '',
@@ -328,6 +334,7 @@ const useIssueManagement = (initialIssues: Issue[]) => {
       assignee: formData.assignee || '',
       sprintId: formData.sprintId || null,
       createdAt: new Date().toISOString().split('T')[0],
+      dueDate: formData.dueDate || defaultDueDate.toISOString().split('T')[0],
     };
     setIssues([...issues, newIssue]);
     return newIssue;
@@ -390,14 +397,35 @@ const useSprintManagement = (initialSprints: Sprint[], issues: Issue[], setIssue
     setSprints(sprints.map(sprint =>
       sprint.id === sprintId ? { ...sprint, status: 'completed' } : sprint
     ));
-    setIssues(issues.map(issue =>
-      issue.sprintId === sprintId && issue.status !== 'done'
-        ? { ...issue, sprintId: null }
-        : issue
-    ));
+    // Keep incomplete tasks in their original sprint for history
+    // They can be moved to current sprint using moveTaskToCurrentSprint
   };
   
   const getCurrentSprint = (): Sprint | undefined => sprints.find(s => s.status === 'active');
+  
+  // Move a task to the current sprint while keeping its original dueDate
+  const moveTaskToCurrentSprint = (taskId: string): void => {
+    const currentSprint = getCurrentSprint();
+    if (!currentSprint) {
+      alert('No active sprint. Start a sprint first.');
+      return;
+    }
+    setIssues(issues.map(issue =>
+      issue.id === taskId ? { ...issue, sprintId: currentSprint.id } : issue
+    ));
+  };
+  
+  // Move multiple tasks to the current sprint
+  const moveTasksToCurrentSprint = (taskIds: string[]): void => {
+    const currentSprint = getCurrentSprint();
+    if (!currentSprint) {
+      alert('No active sprint. Start a sprint first.');
+      return;
+    }
+    setIssues(issues.map(issue =>
+      taskIds.includes(issue.id) ? { ...issue, sprintId: currentSprint.id } : issue
+    ));
+  };
   
   return {
     sprints,
@@ -407,6 +435,8 @@ const useSprintManagement = (initialSprints: Sprint[], issues: Issue[], setIssue
     endSprint,
     getCurrentSprint,
     generateSprintId,
+    moveTaskToCurrentSprint,
+    moveTasksToCurrentSprint,
   };
 };
 
@@ -1163,60 +1193,61 @@ const FlowCraft: React.FC = () => {
   };
 
   // Sample data with realistic content - shows a project with slipped timelines
+  // Tasks have their own dueDate (deadline), sprints are just work windows
   const initialIssues: Issue[] = [
     // Sprint 1 - Incomplete (ended 5 weeks ago, only 4/7 completed, 3 tasks carried over)
-    { id: 'TSK-001', title: 'Implement user authentication', description: 'Add OAuth2 authentication with Google and GitHub providers', status: 'done', priority: 'P0', assignee: 'Alice Chen', sprintId: 'SPR-001', createdAt: getRelativeDate(-56) },
-    { id: 'TSK-002', title: 'Design system components', description: 'Create reusable Button, Input, and Card components', status: 'done', priority: 'P1', assignee: 'Bob Smith', sprintId: 'SPR-001', createdAt: getRelativeDate(-55) },
-    { id: 'TSK-003', title: 'Set up CI/CD pipeline', description: 'Configure GitHub Actions for automated testing and deployment', status: 'done', priority: 'P1', assignee: 'Carol Davis', sprintId: 'SPR-001', createdAt: getRelativeDate(-54) },
-    { id: 'TSK-004', title: 'Database schema design', description: 'Design initial database schema for user and project entities', status: 'done', priority: 'P0', assignee: 'David Lee', sprintId: 'SPR-001', createdAt: getRelativeDate(-53) },
-    { id: 'TSK-005', title: 'Initial API endpoints', description: 'Create REST API for core resources - still missing 3 endpoints', status: 'in-progress', priority: 'P1', assignee: 'Eve Johnson', sprintId: 'SPR-001', createdAt: getRelativeDate(-52) },
-    { id: 'TSK-006', title: 'Environment configuration', description: 'Set up dev/staging/prod environments - BLOCKED by AWS access', status: 'in-progress', priority: 'P0', assignee: 'Frank Wilson', sprintId: 'SPR-001', createdAt: getRelativeDate(-51) },
-    { id: 'TSK-007', title: 'Logging infrastructure', description: 'Centralized logging with ELK stack - deferred to next sprint', status: 'todo', priority: 'P2', assignee: 'Grace Brown', sprintId: 'SPR-001', createdAt: getRelativeDate(-50) },
+    // These tasks had deadlines during Sprint 1 but some are still not done
+    { id: 'TSK-001', title: 'Implement user authentication', description: 'Add OAuth2 authentication with Google and GitHub providers', status: 'done', priority: 'P0', assignee: 'Alice Chen', sprintId: 'SPR-001', createdAt: getRelativeDate(-56), dueDate: getRelativeDate(-45) },
+    { id: 'TSK-002', title: 'Design system components', description: 'Create reusable Button, Input, and Card components', status: 'done', priority: 'P1', assignee: 'Bob Smith', sprintId: 'SPR-001', createdAt: getRelativeDate(-55), dueDate: getRelativeDate(-44) },
+    { id: 'TSK-003', title: 'Set up CI/CD pipeline', description: 'Configure GitHub Actions for automated testing and deployment', status: 'done', priority: 'P1', assignee: 'Carol Davis', sprintId: 'SPR-001', createdAt: getRelativeDate(-54), dueDate: getRelativeDate(-43) },
+    { id: 'TSK-004', title: 'Database schema design', description: 'Design initial database schema for user and project entities', status: 'done', priority: 'P0', assignee: 'David Lee', sprintId: 'SPR-001', createdAt: getRelativeDate(-53), dueDate: getRelativeDate(-45) },
+    { id: 'TSK-005', title: 'Initial API endpoints', description: 'Create REST API for core resources - still missing 3 endpoints', status: 'in-progress', priority: 'P1', assignee: 'Eve Johnson', sprintId: 'SPR-001', createdAt: getRelativeDate(-52), dueDate: getRelativeDate(-43) },
+    { id: 'TSK-006', title: 'Environment configuration', description: 'Set up dev/staging/prod environments - BLOCKED by AWS access', status: 'in-progress', priority: 'P0', assignee: 'Frank Wilson', sprintId: 'SPR-001', createdAt: getRelativeDate(-51), dueDate: getRelativeDate(-44) },
+    { id: 'TSK-007', title: 'Logging infrastructure', description: 'Centralized logging with ELK stack - deferred to next sprint', status: 'todo', priority: 'P2', assignee: 'Grace Brown', sprintId: 'SPR-001', createdAt: getRelativeDate(-50), dueDate: getRelativeDate(-43) },
     
     // Sprint 2 - Incomplete (ended 3 weeks ago, only 3/8 completed, 5 tasks spilled over)
-    { id: 'TSK-008', title: 'Dashboard layout', description: 'Implement main dashboard with widgets', status: 'done', priority: 'P1', assignee: 'Henry Taylor', sprintId: 'SPR-002', createdAt: getRelativeDate(-42) },
-    { id: 'TSK-009', title: 'User profile page', description: 'Create user profile settings and preferences', status: 'done', priority: 'P2', assignee: 'Alice Chen', sprintId: 'SPR-002', createdAt: getRelativeDate(-41) },
-    { id: 'TSK-010', title: 'Search functionality', description: 'Add global search across all entities', status: 'done', priority: 'P2', assignee: 'Bob Smith', sprintId: 'SPR-002', createdAt: getRelativeDate(-40) },
-    { id: 'TSK-011', title: 'Notification system', description: 'Implement in-app and email notifications - BLOCKED by third-party API issues', status: 'in-progress', priority: 'P0', assignee: 'Carol Davis', sprintId: 'SPR-002', createdAt: getRelativeDate(-39) },
-    { id: 'TSK-012', title: 'Data export feature', description: 'Allow exporting data to CSV and JSON - waiting on schema changes', status: 'in-review', priority: 'P1', assignee: 'David Lee', sprintId: 'SPR-002', createdAt: getRelativeDate(-38) },
-    { id: 'TSK-013', title: 'Email integration', description: 'SMTP configuration and email templates - BLOCKED by security review', status: 'in-progress', priority: 'P0', assignee: 'Eve Johnson', sprintId: 'SPR-002', createdAt: getRelativeDate(-37) },
-    { id: 'TSK-014', title: 'File upload system', description: 'Handle file uploads with validation - depends on storage config', status: 'in-progress', priority: 'P1', assignee: 'Frank Wilson', sprintId: 'SPR-002', createdAt: getRelativeDate(-36) },
-    { id: 'TSK-015', title: 'Real-time updates', description: 'WebSocket integration for live updates - complex, needs more time', status: 'todo', priority: 'P2', assignee: 'Grace Brown', sprintId: 'SPR-002', createdAt: getRelativeDate(-35) },
+    { id: 'TSK-008', title: 'Dashboard layout', description: 'Implement main dashboard with widgets', status: 'done', priority: 'P1', assignee: 'Henry Taylor', sprintId: 'SPR-002', createdAt: getRelativeDate(-42), dueDate: getRelativeDate(-32) },
+    { id: 'TSK-009', title: 'User profile page', description: 'Create user profile settings and preferences', status: 'done', priority: 'P2', assignee: 'Alice Chen', sprintId: 'SPR-002', createdAt: getRelativeDate(-41), dueDate: getRelativeDate(-30) },
+    { id: 'TSK-010', title: 'Search functionality', description: 'Add global search across all entities', status: 'done', priority: 'P2', assignee: 'Bob Smith', sprintId: 'SPR-002', createdAt: getRelativeDate(-40), dueDate: getRelativeDate(-29) },
+    { id: 'TSK-011', title: 'Notification system', description: 'Implement in-app and email notifications - BLOCKED by third-party API issues', status: 'in-progress', priority: 'P0', assignee: 'Carol Davis', sprintId: 'SPR-002', createdAt: getRelativeDate(-39), dueDate: getRelativeDate(-30) },
+    { id: 'TSK-012', title: 'Data export feature', description: 'Allow exporting data to CSV and JSON - waiting on schema changes', status: 'in-review', priority: 'P1', assignee: 'David Lee', sprintId: 'SPR-002', createdAt: getRelativeDate(-38), dueDate: getRelativeDate(-29) },
+    { id: 'TSK-013', title: 'Email integration', description: 'SMTP configuration and email templates - BLOCKED by security review', status: 'in-progress', priority: 'P0', assignee: 'Eve Johnson', sprintId: 'SPR-002', createdAt: getRelativeDate(-37), dueDate: getRelativeDate(-30) },
+    { id: 'TSK-014', title: 'File upload system', description: 'Handle file uploads with validation - depends on storage config', status: 'in-progress', priority: 'P1', assignee: 'Frank Wilson', sprintId: 'SPR-002', createdAt: getRelativeDate(-36), dueDate: getRelativeDate(-29) },
+    { id: 'TSK-015', title: 'Real-time updates', description: 'WebSocket integration for live updates - complex, needs more time', status: 'todo', priority: 'P2', assignee: 'Grace Brown', sprintId: 'SPR-002', createdAt: getRelativeDate(-35), dueDate: getRelativeDate(-29) },
     
     // Sprint 3 - Active but severely behind (started 2 weeks ago, should end in 3 days, only 1/10 completed)
-    // Includes carryover from Sprint 1 and Sprint 2
-    { id: 'TSK-016', title: 'API rate limiting', description: 'Implement rate limiting for public endpoints - critical for launch', status: 'in-progress', priority: 'P0', assignee: 'David Lee', sprintId: 'SPR-003', createdAt: getRelativeDate(-14) },
-    { id: 'TSK-017', title: 'Mobile responsive design', description: 'Ensure all pages work on mobile devices', status: 'in-progress', priority: 'P1', assignee: 'Eve Johnson', sprintId: 'SPR-003', createdAt: getRelativeDate(-13) },
-    { id: 'TSK-018', title: 'Accessibility audit', description: 'Ensure WCAG 2.1 AA compliance - depends on design freeze', status: 'todo', priority: 'P1', assignee: 'Frank Wilson', sprintId: 'SPR-003', createdAt: getRelativeDate(-12) },
-    { id: 'TSK-019', title: 'Error handling improvements', description: 'Improve error messages and recovery flows', status: 'todo', priority: 'P2', assignee: 'Grace Brown', sprintId: 'SPR-003', createdAt: getRelativeDate(-11) },
-    { id: 'TSK-020', title: 'Performance monitoring', description: 'Add APM integration for performance tracking', status: 'todo', priority: 'P2', assignee: 'Henry Taylor', sprintId: 'SPR-003', createdAt: getRelativeDate(-10) },
-    { id: 'TSK-021', title: 'Security headers', description: 'Implement security headers and CSP - BLOCKED waiting for infra team', status: 'in-progress', priority: 'P0', assignee: 'Alice Chen', sprintId: 'SPR-003', createdAt: getRelativeDate(-9) },
-    { id: 'TSK-022', title: 'Payment gateway integration', description: 'Stripe integration for subscriptions - critical path', status: 'in-progress', priority: 'P0', assignee: 'Bob Smith', sprintId: 'SPR-003', createdAt: getRelativeDate(-8) },
-    { id: 'TSK-023', title: 'User onboarding flow', description: 'First-time user experience and tutorial', status: 'done', priority: 'P1', assignee: 'Carol Davis', sprintId: 'SPR-003', createdAt: getRelativeDate(-7) },
-    { id: 'TSK-024', title: 'Complete API endpoints', description: 'Finish remaining 3 endpoints from Sprint 1', status: 'in-progress', priority: 'P1', assignee: 'Eve Johnson', sprintId: 'SPR-003', createdAt: getRelativeDate(-6) },
-    { id: 'TSK-025', title: 'Environment setup', description: 'Complete AWS environment configuration from Sprint 1', status: 'in-progress', priority: 'P0', assignee: 'Frank Wilson', sprintId: 'SPR-003', createdAt: getRelativeDate(-5) },
+    { id: 'TSK-016', title: 'API rate limiting', description: 'Implement rate limiting for public endpoints - critical for launch', status: 'in-progress', priority: 'P0', assignee: 'David Lee', sprintId: 'SPR-003', createdAt: getRelativeDate(-14), dueDate: getRelativeDate(-2) },
+    { id: 'TSK-017', title: 'Mobile responsive design', description: 'Ensure all pages work on mobile devices', status: 'in-progress', priority: 'P1', assignee: 'Eve Johnson', sprintId: 'SPR-003', createdAt: getRelativeDate(-13), dueDate: getRelativeDate(1) },
+    { id: 'TSK-018', title: 'Accessibility audit', description: 'Ensure WCAG 2.1 AA compliance - depends on design freeze', status: 'todo', priority: 'P1', assignee: 'Frank Wilson', sprintId: 'SPR-003', createdAt: getRelativeDate(-12), dueDate: getRelativeDate(3) },
+    { id: 'TSK-019', title: 'Error handling improvements', description: 'Improve error messages and recovery flows', status: 'todo', priority: 'P2', assignee: 'Grace Brown', sprintId: 'SPR-003', createdAt: getRelativeDate(-11), dueDate: getRelativeDate(5) },
+    { id: 'TSK-020', title: 'Performance monitoring', description: 'Add APM integration for performance tracking', status: 'todo', priority: 'P2', assignee: 'Henry Taylor', sprintId: 'SPR-003', createdAt: getRelativeDate(-10), dueDate: getRelativeDate(3) },
+    { id: 'TSK-021', title: 'Security headers', description: 'Implement security headers and CSP - BLOCKED waiting for infra team', status: 'in-progress', priority: 'P0', assignee: 'Alice Chen', sprintId: 'SPR-003', createdAt: getRelativeDate(-9), dueDate: getRelativeDate(-5) },
+    { id: 'TSK-022', title: 'Payment gateway integration', description: 'Stripe integration for subscriptions - critical path', status: 'in-progress', priority: 'P0', assignee: 'Bob Smith', sprintId: 'SPR-003', createdAt: getRelativeDate(-8), dueDate: getRelativeDate(0) },
+    { id: 'TSK-023', title: 'User onboarding flow', description: 'First-time user experience and tutorial', status: 'done', priority: 'P1', assignee: 'Carol Davis', sprintId: 'SPR-003', createdAt: getRelativeDate(-7), dueDate: getRelativeDate(-3) },
+    { id: 'TSK-024', title: 'Complete API endpoints', description: 'Finish remaining 3 endpoints from Sprint 1', status: 'in-progress', priority: 'P1', assignee: 'Eve Johnson', sprintId: 'SPR-003', createdAt: getRelativeDate(-6), dueDate: getRelativeDate(-1) },
+    { id: 'TSK-025', title: 'Environment setup', description: 'Complete AWS environment configuration from Sprint 1', status: 'in-progress', priority: 'P0', assignee: 'Frank Wilson', sprintId: 'SPR-003', createdAt: getRelativeDate(-5), dueDate: getRelativeDate(-3) },
     
     // Sprint 4 - Planned but already has carryover concerns (will likely absorb Sprint 3 spillover)
-    { id: 'TSK-026', title: 'Advanced filtering', description: 'Add complex filter builder for reports', status: 'todo', priority: 'P2', assignee: 'David Lee', sprintId: 'SPR-004', createdAt: getRelativeDate(-5) },
-    { id: 'TSK-027', title: 'Bulk operations', description: 'Enable bulk edit and delete for items', status: 'todo', priority: 'P2', assignee: 'Eve Johnson', sprintId: 'SPR-004', createdAt: getRelativeDate(-4) },
-    { id: 'TSK-028', title: 'Keyboard shortcuts', description: 'Add keyboard navigation and shortcuts', status: 'todo', priority: 'P3', assignee: 'Frank Wilson', sprintId: 'SPR-004', createdAt: getRelativeDate(-3) },
-    { id: 'TSK-029', title: 'Dark mode polish', description: 'Refine dark mode color palette', status: 'todo', priority: 'P3', assignee: 'Grace Brown', sprintId: 'SPR-004', createdAt: getRelativeDate(-2) },
-    { id: 'TSK-030', title: 'Audit logging', description: 'Track all user actions for compliance', status: 'todo', priority: 'P1', assignee: 'Henry Taylor', sprintId: 'SPR-004', createdAt: getRelativeDate(-1) },
+    { id: 'TSK-026', title: 'Advanced filtering', description: 'Add complex filter builder for reports', status: 'todo', priority: 'P2', assignee: 'David Lee', sprintId: 'SPR-004', createdAt: getRelativeDate(-5), dueDate: getRelativeDate(15) },
+    { id: 'TSK-027', title: 'Bulk operations', description: 'Enable bulk edit and delete for items', status: 'todo', priority: 'P2', assignee: 'Eve Johnson', sprintId: 'SPR-004', createdAt: getRelativeDate(-4), dueDate: getRelativeDate(14) },
+    { id: 'TSK-028', title: 'Keyboard shortcuts', description: 'Add keyboard navigation and shortcuts', status: 'todo', priority: 'P3', assignee: 'Frank Wilson', sprintId: 'SPR-004', createdAt: getRelativeDate(-3), dueDate: getRelativeDate(17) },
+    { id: 'TSK-029', title: 'Dark mode polish', description: 'Refine dark mode color palette', status: 'todo', priority: 'P3', assignee: 'Grace Brown', sprintId: 'SPR-004', createdAt: getRelativeDate(-2), dueDate: getRelativeDate(17) },
+    { id: 'TSK-030', title: 'Audit logging', description: 'Track all user actions for compliance', status: 'todo', priority: 'P1', assignee: 'Henry Taylor', sprintId: 'SPR-004', createdAt: getRelativeDate(-1), dueDate: getRelativeDate(10) },
     
     // Sprint 5 - Planned
-    { id: 'TSK-031', title: 'API v2 design', description: 'Design next version of API with GraphQL', status: 'todo', priority: 'P1', assignee: 'Alice Chen', sprintId: 'SPR-005', createdAt: getRelativeDate(-1) },
-    { id: 'TSK-032', title: 'Webhooks system', description: 'Allow users to configure webhooks for events', status: 'todo', priority: 'P2', assignee: 'Bob Smith', sprintId: 'SPR-005', createdAt: getRelativeDate(-1) },
-    { id: 'TSK-033', title: 'Team permissions', description: 'Implement role-based access control', status: 'todo', priority: 'P1', assignee: 'Carol Davis', sprintId: 'SPR-005', createdAt: getRelativeDate(-1) },
+    { id: 'TSK-031', title: 'API v2 design', description: 'Design next version of API with GraphQL', status: 'todo', priority: 'P1', assignee: 'Alice Chen', sprintId: 'SPR-005', createdAt: getRelativeDate(-1), dueDate: getRelativeDate(25) },
+    { id: 'TSK-032', title: 'Webhooks system', description: 'Allow users to configure webhooks for events', status: 'todo', priority: 'P2', assignee: 'Bob Smith', sprintId: 'SPR-005', createdAt: getRelativeDate(-1), dueDate: getRelativeDate(28) },
+    { id: 'TSK-033', title: 'Team permissions', description: 'Implement role-based access control', status: 'todo', priority: 'P1', assignee: 'Carol Davis', sprintId: 'SPR-005', createdAt: getRelativeDate(-1), dueDate: getRelativeDate(31) },
     
     // Backlog - mix of priorities, includes tasks deferred from earlier sprints
-    { id: 'TSK-034', title: 'Logging infrastructure', description: 'Centralized logging with ELK stack - deferred from Sprint 1', status: 'todo', priority: 'P2', assignee: 'Grace Brown', sprintId: null, createdAt: getRelativeDate(-50) },
-    { id: 'TSK-035', title: 'Real-time updates', description: 'WebSocket integration for live updates - deferred from Sprint 2', status: 'todo', priority: 'P2', assignee: 'Grace Brown', sprintId: null, createdAt: getRelativeDate(-35) },
-    { id: 'TSK-036', title: 'Performance optimization', description: 'Optimize bundle size and loading times', status: 'todo', priority: 'P3', assignee: 'David Lee', sprintId: null, createdAt: getRelativeDate(-20) },
-    { id: 'TSK-037', title: 'Unit test coverage', description: 'Achieve 80% code coverage - tech debt from Sprint 1', status: 'in-progress', priority: 'P2', assignee: 'Eve Johnson', sprintId: null, createdAt: getRelativeDate(-45) },
-    { id: 'TSK-038', title: 'Documentation update', description: 'Update API documentation with examples', status: 'todo', priority: 'P4', assignee: 'Frank Wilson', sprintId: null, createdAt: getRelativeDate(-18) },
-    { id: 'TSK-039', title: 'Mobile app research', description: 'Research React Native for mobile app', status: 'todo', priority: 'P4', assignee: 'Grace Brown', sprintId: null, createdAt: getRelativeDate(-17) },
-    { id: 'TSK-040', title: 'Analytics dashboard', description: 'Build analytics dashboard with charts', status: 'todo', priority: 'P3', assignee: 'Henry Taylor', sprintId: null, createdAt: getRelativeDate(-16) },
-    { id: 'TSK-041', title: 'Database optimization', description: 'Add indexes and optimize slow queries - URGENT tech debt', status: 'in-progress', priority: 'P1', assignee: 'Alice Chen', sprintId: null, createdAt: getRelativeDate(-30) },
+    { id: 'TSK-034', title: 'Logging infrastructure', description: 'Centralized logging with ELK stack - deferred from Sprint 1', status: 'todo', priority: 'P2', assignee: 'Grace Brown', sprintId: null, createdAt: getRelativeDate(-50), dueDate: getRelativeDate(14) },
+    { id: 'TSK-035', title: 'Real-time updates', description: 'WebSocket integration for live updates - deferred from Sprint 2', status: 'todo', priority: 'P2', assignee: 'Grace Brown', sprintId: null, createdAt: getRelativeDate(-35), dueDate: getRelativeDate(21) },
+    { id: 'TSK-036', title: 'Performance optimization', description: 'Optimize bundle size and loading times', status: 'todo', priority: 'P3', assignee: 'David Lee', sprintId: null, createdAt: getRelativeDate(-20), dueDate: getRelativeDate(30) },
+    { id: 'TSK-037', title: 'Unit test coverage', description: 'Achieve 80% code coverage - tech debt from Sprint 1', status: 'in-progress', priority: 'P2', assignee: 'Eve Johnson', sprintId: null, createdAt: getRelativeDate(-45), dueDate: getRelativeDate(-10) },
+    { id: 'TSK-038', title: 'Documentation update', description: 'Update API documentation with examples', status: 'todo', priority: 'P4', assignee: 'Frank Wilson', sprintId: null, createdAt: getRelativeDate(-18), dueDate: getRelativeDate(45) },
+    { id: 'TSK-039', title: 'Mobile app research', description: 'Research React Native for mobile app', status: 'todo', priority: 'P4', assignee: 'Grace Brown', sprintId: null, createdAt: getRelativeDate(-17), dueDate: getRelativeDate(60) },
+    { id: 'TSK-040', title: 'Analytics dashboard', description: 'Build analytics dashboard with charts', status: 'todo', priority: 'P3', assignee: 'Henry Taylor', sprintId: null, createdAt: getRelativeDate(-16), dueDate: getRelativeDate(35) },
+    { id: 'TSK-041', title: 'Database optimization', description: 'Add indexes and optimize slow queries - URGENT tech debt', status: 'in-progress', priority: 'P1', assignee: 'Alice Chen', sprintId: null, createdAt: getRelativeDate(-30), dueDate: getRelativeDate(-15) },
   ];
   
   const initialSprints: Sprint[] = [
@@ -1252,7 +1283,7 @@ const FlowCraft: React.FC = () => {
   
   // Use custom hooks
   const { issues, setIssues, createIssue, updateIssue, deleteIssue } = useIssueManagement(initialIssues);
-  const { sprints, createSprint, startSprint, endSprint, getCurrentSprint } = useSprintManagement(initialSprints, issues, setIssues);
+  const { sprints, createSprint, startSprint, endSprint, getCurrentSprint, moveTaskToCurrentSprint, moveTasksToCurrentSprint } = useSprintManagement(initialSprints, issues, setIssues);
   
   // Config context value
   const configValue = {
@@ -1373,17 +1404,32 @@ const FlowCraft: React.FC = () => {
       filtered = filtered.filter(issue => issue.status === filterStatus);
     }
     
+    // Sort by due date: overdue first, then closest deadline, done items last
+    filtered = [...filtered].sort((a, b) => {
+      // Done items go to the bottom
+      if (a.status === 'done' && b.status !== 'done') return 1;
+      if (a.status !== 'done' && b.status === 'done') return -1;
+      
+      // Sort by due date (earliest first)
+      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+    });
+    
     return filtered;
   };
   
   // Issue Form Component
   const IssueForm = ({ issue, onSubmit, onCancel }: any) => {
+    // Default due date is 14 days from now
+    const defaultDueDate = new Date();
+    defaultDueDate.setDate(defaultDueDate.getDate() + 14);
+    
     const [formData, setFormData] = useState({
       title: issue?.title || '',
       description: issue?.description || '',
       priority: issue?.priority || APP_CONFIG.priorities[2].value,
       assignee: issue?.assignee || '',
       sprintId: issue?.sprintId || '',
+      dueDate: issue?.dueDate || defaultDueDate.toISOString().split('T')[0],
     });
     const [errors, setErrors] = useState<any>({});
     
@@ -1460,6 +1506,40 @@ const FlowCraft: React.FC = () => {
               placeholder={`Enter ${LABELS.assignee.toLowerCase()}`}
             />
             {errors.assignee && <p className="text-red-500 text-sm mt-1">{errors.assignee}</p>}
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
+              Deadline *
+            </label>
+            <input
+              type="date"
+              value={formData.dueDate}
+              onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+              className={`${THEME.components.input} w-full px-3 py-2`}
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
+              Sprint
+            </label>
+            <select
+              value={formData.sprintId}
+              onChange={(e) => setFormData({ ...formData, sprintId: e.target.value })}
+              className={`${THEME.components.input} w-full px-3 py-2`}
+            >
+              <option value="">Backlog</option>
+              {sprints
+                .filter(s => s.status !== 'completed' || s.id === issue?.sprintId)
+                .map(s => (
+                  <option key={s.id} value={s.id} disabled={s.status === 'completed'}>
+                    {s.name}{s.status === 'completed' ? ' (completed)' : ''}
+                  </option>
+                ))}
+            </select>
           </div>
         </div>
         
@@ -1645,6 +1725,37 @@ const FlowCraft: React.FC = () => {
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-md ${getStatusColor(issue.status)}`}>
                       {APP_CONFIG.statuses.find(s => s.value === issue.status)?.label}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {(() => {
+                      const overdue = isTaskOverdue(issue);
+                      const daysFromDue = getDaysFromDue(issue.dueDate);
+                      return (
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          <span className={
+                            issue.status === 'done'
+                              ? 'text-slate-400 dark:text-slate-500'
+                              : overdue
+                              ? 'text-red-600 dark:text-red-400 font-medium'
+                              : daysFromDue <= 3
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : 'text-slate-900 dark:text-slate-100'
+                          }>
+                            {issue.status === 'done'
+                              ? issue.dueDate
+                              : overdue
+                              ? `${Math.abs(daysFromDue)}d overdue`
+                              : daysFromDue === 0
+                              ? 'Today'
+                              : daysFromDue === 1
+                              ? 'Tomorrow'
+                              : `${daysFromDue}d left`
+                            }
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-slate-100">
                     {issue.assignee}
@@ -1912,16 +2023,36 @@ const FlowCraft: React.FC = () => {
   };
   
   // Render Sprint Detail View (Read-Only Kanban for any sprint)
+  // Helper to check if a task is overdue
+  const isTaskOverdue = (issue: Issue): boolean => {
+    if (issue.status === 'done') return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(issue.dueDate);
+    return dueDate < today;
+  };
+  
+  // Helper to get days until/past due date
+  const getDaysFromDue = (dueDate: string): number => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(dueDate);
+    return Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  };
+  
   const renderSprintDetailView = (sprintId: string) => {
     const sprint = sprints.find(s => s.id === sprintId);
     if (!sprint) return null;
     
     const sprintIssues = issues.filter(issue => issue.sprintId === sprintId);
     const completedIssues = sprintIssues.filter(issue => issue.status === 'done');
+    const incompleteIssues = sprintIssues.filter(issue => issue.status !== 'done');
     const progress = sprintIssues.length > 0 
       ? Math.round((completedIssues.length / sprintIssues.length) * 100) 
       : 0;
     const isReadOnly = sprint.status !== 'active';
+    const currentSprint = getCurrentSprint();
+    const canMoveToCurrentSprint = sprint.status === 'completed' && currentSprint && incompleteIssues.length > 0;
     
     return (
       <div className="space-y-6">
@@ -1965,6 +2096,16 @@ const FlowCraft: React.FC = () => {
                 <Zap className="w-4 h-4 mr-1" />
                 {sprintIssues.length} issues
               </span>
+              {canMoveToCurrentSprint && (
+                <Button 
+                  onClick={() => moveTasksToCurrentSprint(incompleteIssues.map(i => i.id))} 
+                  variant="orange" 
+                  size="sm"
+                  icon={ArrowRight}
+                >
+                  Move {incompleteIssues.length} to Current Sprint
+                </Button>
+              )}
               {sprint.status === 'active' && (
                 <Button onClick={() => endSprint(sprint.id)} variant="danger" size="sm">
                   End Sprint
@@ -2003,43 +2144,86 @@ const FlowCraft: React.FC = () => {
                 </div>
                 
                 <div className="space-y-3 min-h-[200px]">
-                  {columnIssues.map((issue) => (
-                    <Card
-                      key={issue.id}
-                      hover={!isReadOnly}
-                      className={`p-4 ${!isReadOnly ? 'cursor-move' : 'cursor-default'} ${draggedItem?.id === issue.id ? 'opacity-50' : ''}`}
-                    >
-                      <div
-                        draggable={!isReadOnly && APP_CONFIG.features.dragAndDrop}
-                        onDragStart={!isReadOnly ? (e) => handleDragStart(e, issue) : undefined}
+                  {columnIssues.map((issue) => {
+                    const overdue = isTaskOverdue(issue);
+                    const daysFromDue = getDaysFromDue(issue.dueDate);
+                    const canMoveThis = sprint.status === 'completed' && issue.status !== 'done' && currentSprint;
+                    
+                    return (
+                      <Card
+                        key={issue.id}
+                        hover={!isReadOnly}
+                        className={`p-4 ${!isReadOnly ? 'cursor-move' : 'cursor-default'} ${draggedItem?.id === issue.id ? 'opacity-50' : ''} ${overdue ? 'border-l-4 border-l-red-500' : ''}`}
                       >
-                        <div className="flex items-start justify-between mb-2">
-                          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                            {issue.id}
-                          </span>
-                          <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded ${getPriorityColor(issue.priority)}`}>
-                            {issue.priority}
-                          </span>
+                        <div
+                          draggable={!isReadOnly && APP_CONFIG.features.dragAndDrop}
+                          onDragStart={!isReadOnly ? (e) => handleDragStart(e, issue) : undefined}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                              {issue.id}
+                            </span>
+                            <span className={`inline-flex px-1.5 py-0.5 text-xs font-semibold rounded ${getPriorityColor(issue.priority)}`}>
+                              {issue.priority}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
+                            {issue.title}
+                          </h4>
+                          
+                          {/* Due Date */}
+                          <div className="flex items-center gap-1 mb-2">
+                            <Calendar className="w-3 h-3 text-slate-400" />
+                            <span className={`text-xs ${
+                              issue.status === 'done'
+                                ? 'text-slate-400 dark:text-slate-500'
+                                : overdue 
+                                ? 'text-red-600 dark:text-red-400 font-medium' 
+                                : daysFromDue <= 3
+                                ? 'text-amber-600 dark:text-amber-400'
+                                : 'text-slate-500 dark:text-slate-400'
+                            }`}>
+                              {issue.status === 'done'
+                                ? `Due: ${issue.dueDate}`
+                                : overdue 
+                                ? `${Math.abs(daysFromDue)} days overdue`
+                                : daysFromDue === 0 
+                                ? 'Due today'
+                                : daysFromDue === 1
+                                ? 'Due tomorrow'
+                                : `Due in ${daysFromDue} days`
+                              }
+                            </span>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-500 dark:text-slate-400">
+                              {issue.assignee}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              {canMoveThis && (
+                                <button
+                                  onClick={() => moveTaskToCurrentSprint(issue.id)}
+                                  className="text-orange-500 hover:text-orange-600 dark:hover:text-orange-400"
+                                  title="Move to current sprint"
+                                >
+                                  <ArrowRight className="w-3 h-3" />
+                                </button>
+                              )}
+                              {!isReadOnly && (
+                                <button
+                                  onClick={() => setEditingIssue(issue)}
+                                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <h4 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-2">
-                          {issue.title}
-                        </h4>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-500 dark:text-slate-400">
-                            {issue.assignee}
-                          </span>
-                          {!isReadOnly && (
-                            <button
-                              onClick={() => setEditingIssue(issue)}
-                              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                            >
-                              <Edit2 className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
+                      </Card>
+                    );
+                  })}
                   {columnIssues.length === 0 && (
                     <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">
                       No tasks
