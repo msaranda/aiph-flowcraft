@@ -931,3 +931,4 @@ export function getScenarioData(scenario: 'healthy' | 'crisis' | 'mixed'): Brief
   return baseData;
 }
 
+
