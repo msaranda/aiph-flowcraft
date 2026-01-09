@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef, createContext, useContext } from 'react';
-import { Search, Plus, Calendar, ChevronDown, X, Check, AlertCircle, Mic, MicOff, Sun, Moon, Edit2, Trash2, ArrowRight, Play, Square, CheckCircle2, Clock, Users, Filter, LucideIcon, Sparkles, Zap, Eye, RotateCcw, Settings, FileText } from 'lucide-react';
+import { Search, Plus, Calendar, ChevronDown, X, Check, AlertCircle, Mic, MicOff, Sun, Moon, Edit2, Trash2, ArrowRight, Play, Square, CheckCircle2, Clock, Users, Filter, LucideIcon, Sparkles, Zap, Eye, RotateCcw, Settings, FileText, Building2 } from 'lucide-react';
 import ExecutiveBriefing from './components/ExecutiveBriefing';
+import UserManagement from './components/UserManagement';
 
 // ==========================================
 // CONFIGURATION SECTION - Easy to customize
@@ -58,6 +59,7 @@ const APP_CONFIG = {
     { id: 'issues', label: 'Issues', enabled: true },
     { id: 'current-sprint', label: 'Current Sprint', enabled: true },
     { id: 'sprints', label: 'Sprints', enabled: true },
+    { id: 'team-management', label: 'Team Management', enabled: true },
     { id: 'executive-briefing', label: 'Executive Briefing', enabled: true },
   ],
   
@@ -225,13 +227,31 @@ const LABELS = {
 // TYPE DEFINITIONS
 // ==========================================
 
+// User represents a team member who can be assigned to issues
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  teamId: string;
+  avatar?: string;
+  role?: string;
+}
+
+// Team represents a group of users working together
+interface Team {
+  id: string;
+  name: string;
+  color: string;
+  isDefault?: boolean; // Predefined teams cannot be deleted
+}
+
 interface Issue {
   id: string;
   title: string;
   description: string;
   status: string;
   priority: string;
-  assignee: string;
+  assignee: string; // User ID reference
   sprintId: string | null;
   createdAt: string;
   dueDate: string; // Task's own deadline, independent of sprint
@@ -245,6 +265,7 @@ interface Sprint {
   startDate: string;
   endDate: string;
   createdAt: string;
+  teamId?: string; // Optional team assignment for sprint
 }
 
 interface TeamMember {
@@ -377,6 +398,7 @@ const useSprintManagement = (initialSprints: Sprint[], issues: Issue[], setIssue
       startDate: formData.startDate || '',
       endDate: formData.endDate || '',
       createdAt: new Date().toISOString().split('T')[0],
+      teamId: formData.teamId,
     };
     setSprints([...sprints, newSprint]);
     return newSprint;
@@ -1253,10 +1275,50 @@ const FlowCraft: React.FC = () => {
   const initialSprints: Sprint[] = [
     { id: 'SPR-001', name: 'Sprint 1 - Foundation', status: 'completed', startDate: getRelativeDate(-56), endDate: getRelativeDate(-43), createdAt: getRelativeDate(-57) },
     { id: 'SPR-002', name: 'Sprint 2 - Core Features', status: 'completed', startDate: getRelativeDate(-42), endDate: getRelativeDate(-29), createdAt: getRelativeDate(-43) },
-    { id: 'SPR-003', name: 'Sprint 3 - Launch Prep', status: 'active', startDate: getRelativeDate(-14), endDate: getRelativeDate(3), createdAt: getRelativeDate(-15) },
-    { id: 'SPR-004', name: 'Sprint 4 - Post-Launch', status: 'planned', startDate: getRelativeDate(4), endDate: getRelativeDate(17), createdAt: getRelativeDate(-1) },
-    { id: 'SPR-005', name: 'Sprint 5 - API v2', status: 'planned', startDate: getRelativeDate(18), endDate: getRelativeDate(31), createdAt: getRelativeDate(-1) },
+    { id: 'SPR-003', name: 'Sprint 3 - Launch Prep', status: 'active', startDate: getRelativeDate(-14), endDate: getRelativeDate(3), createdAt: getRelativeDate(-15), teamId: 'team-engineering' },
+    { id: 'SPR-004', name: 'Sprint 4 - Post-Launch', status: 'planned', startDate: getRelativeDate(4), endDate: getRelativeDate(17), createdAt: getRelativeDate(-1), teamId: 'team-engineering' },
+    { id: 'SPR-005', name: 'Sprint 5 - API v2', status: 'planned', startDate: getRelativeDate(18), endDate: getRelativeDate(31), createdAt: getRelativeDate(-1), teamId: 'team-product' },
   ];
+
+  // Default teams - predefined teams that cannot be deleted
+  const initialTeams: Team[] = [
+    { id: 'team-engineering', name: 'Engineering', color: 'bg-blue-500', isDefault: true },
+    { id: 'team-design', name: 'Design', color: 'bg-purple-500', isDefault: true },
+    { id: 'team-product', name: 'Product', color: 'bg-emerald-500', isDefault: true },
+  ];
+
+  // Initial users - extracted from issue assignees and assigned to teams
+  const initialUsers: User[] = [
+    // Engineering team (5 members)
+    { id: 'user-001', name: 'Alice Chen', email: 'alice.chen@company.com', teamId: 'team-engineering', role: 'Engineering Lead' },
+    { id: 'user-002', name: 'David Lee', email: 'david.lee@company.com', teamId: 'team-engineering', role: 'Senior Backend Dev' },
+    { id: 'user-003', name: 'Eve Johnson', email: 'eve.johnson@company.com', teamId: 'team-engineering', role: 'Frontend Developer' },
+    { id: 'user-004', name: 'Frank Wilson', email: 'frank.wilson@company.com', teamId: 'team-engineering', role: 'DevOps Engineer' },
+    { id: 'user-005', name: 'Grace Brown', email: 'grace.brown@company.com', teamId: 'team-engineering', role: 'Backend Developer' },
+    // Design team (2 members)
+    { id: 'user-006', name: 'Bob Smith', email: 'bob.smith@company.com', teamId: 'team-design', role: 'Design Lead' },
+    { id: 'user-007', name: 'Henry Taylor', email: 'henry.taylor@company.com', teamId: 'team-design', role: 'UI Designer' },
+    // Product team (1 member)
+    { id: 'user-008', name: 'Carol Davis', email: 'carol.davis@company.com', teamId: 'team-product', role: 'Product Manager' },
+  ];
+
+  // Create mapping from names to user IDs for migrating existing issue data
+  const nameToUserId: Record<string, string> = {
+    'Alice Chen': 'user-001',
+    'David Lee': 'user-002',
+    'Eve Johnson': 'user-003',
+    'Frank Wilson': 'user-004',
+    'Grace Brown': 'user-005',
+    'Bob Smith': 'user-006',
+    'Henry Taylor': 'user-007',
+    'Carol Davis': 'user-008',
+  };
+
+  // Migrate initial issues to use user IDs instead of names
+  const migratedIssues: Issue[] = initialIssues.map(issue => ({
+    ...issue,
+    assignee: nameToUserId[issue.assignee] || issue.assignee,
+  }));
   
   // Core state
   const [currentView, setCurrentView] = useState<string>('issues');
@@ -1282,8 +1344,99 @@ const FlowCraft: React.FC = () => {
   const [currentCellId, setCurrentCellId] = useState<string>('cell-a');
   
   // Use custom hooks
-  const { issues, setIssues, createIssue, updateIssue, deleteIssue } = useIssueManagement(initialIssues);
-  const { sprints, createSprint, startSprint, endSprint, getCurrentSprint, moveTaskToCurrentSprint, moveTasksToCurrentSprint } = useSprintManagement(initialSprints, issues, setIssues);
+  const { issues, setIssues, createIssue, updateIssue, deleteIssue } = useIssueManagement(migratedIssues);
+  const { sprints, setSprints, createSprint, startSprint, endSprint, getCurrentSprint, moveTaskToCurrentSprint, moveTasksToCurrentSprint } = useSprintManagement(initialSprints, issues, setIssues);
+  
+  // Users and Teams state
+  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [teams, setTeams] = useState<Team[]>(initialTeams);
+  
+  // User management helper functions
+  const getUserById = (userId: string): User | undefined => users.find(u => u.id === userId);
+  const getUserName = (userId: string): string => {
+    const user = getUserById(userId);
+    return user ? user.name : userId; // Fallback to userId if not found
+  };
+  const getTeamById = (teamId: string): Team | undefined => teams.find(t => t.id === teamId);
+  const getTeamName = (teamId: string): string => {
+    const team = getTeamById(teamId);
+    return team ? team.name : teamId;
+  };
+  const getTeamColor = (teamId: string): string => {
+    const team = getTeamById(teamId);
+    return team ? team.color : 'bg-gray-500';
+  };
+  const getUserTeam = (userId: string): Team | undefined => {
+    const user = getUserById(userId);
+    return user ? getTeamById(user.teamId) : undefined;
+  };
+  const getTeamUsers = (teamId: string): User[] => users.filter(u => u.teamId === teamId);
+  
+  // User CRUD operations
+  const createUser = (userData: Omit<User, 'id'>): User => {
+    const maxId = Math.max(...users.map(u => parseInt(u.id.split('-')[1])), 0);
+    const newUser: User = {
+      ...userData,
+      id: `user-${String(maxId + 1).padStart(3, '0')}`,
+    };
+    setUsers([...users, newUser]);
+    return newUser;
+  };
+  
+  const updateUser = (userId: string, updates: Partial<User>): void => {
+    setUsers(users.map(user => 
+      user.id === userId ? { ...user, ...updates } : user
+    ));
+  };
+  
+  const deleteUser = (userId: string): void => {
+    // Don't delete if user has assigned issues
+    const assignedIssues = issues.filter(i => i.assignee === userId);
+    if (assignedIssues.length > 0) {
+      alert(`Cannot delete user with ${assignedIssues.length} assigned issues. Please reassign issues first.`);
+      return;
+    }
+    setUsers(users.filter(user => user.id !== userId));
+  };
+  
+  // Team CRUD operations
+  const createTeam = (teamData: Omit<Team, 'id'>): Team => {
+    const maxId = Math.max(...teams.map(t => parseInt(t.id.split('-')[1]) || 0), 0);
+    const newTeam: Team = {
+      ...teamData,
+      id: `team-custom-${String(maxId + 1).padStart(3, '0')}`,
+      isDefault: false,
+    };
+    setTeams([...teams, newTeam]);
+    return newTeam;
+  };
+  
+  const updateTeam = (teamId: string, updates: Partial<Team>): void => {
+    setTeams(teams.map(team => 
+      team.id === teamId ? { ...team, ...updates } : team
+    ));
+  };
+  
+  const deleteTeam = (teamId: string): void => {
+    const team = getTeamById(teamId);
+    if (team?.isDefault) {
+      alert('Cannot delete default teams.');
+      return;
+    }
+    const teamUsers = getTeamUsers(teamId);
+    if (teamUsers.length > 0) {
+      alert(`Cannot delete team with ${teamUsers.length} members. Please reassign members first.`);
+      return;
+    }
+    setTeams(teams.filter(t => t.id !== teamId));
+  };
+  
+  // Update sprint team assignment
+  const updateSprintTeam = (sprintId: string, teamId: string | undefined): void => {
+    setSprints(sprints.map(sprint => 
+      sprint.id === sprintId ? { ...sprint, teamId } : sprint
+    ));
+  };
   
   // Config context value
   const configValue = {
@@ -1498,13 +1651,21 @@ const FlowCraft: React.FC = () => {
             <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
               {LABELS.assignee} *
             </label>
-            <input
-              type="text"
+            <select
               value={formData.assignee}
               onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
               className={`${THEME.components.input} w-full px-3 py-2 ${errors.assignee ? 'border-red-500' : ''}`}
-              placeholder={`Enter ${LABELS.assignee.toLowerCase()}`}
-            />
+            >
+              <option value="">Select assignee</option>
+              {users.map(user => {
+                const team = getTeamById(user.teamId);
+                return (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({team?.name || 'No Team'})
+                  </option>
+                );
+              })}
+            </select>
             {errors.assignee && <p className="text-red-500 text-sm mt-1">{errors.assignee}</p>}
           </div>
         </div>
@@ -1561,6 +1722,7 @@ const FlowCraft: React.FC = () => {
       name: '',
       startDate: '',
       endDate: '',
+      teamId: '',
     });
     const [errors, setErrors] = useState<any>({});
     
@@ -1575,7 +1737,10 @@ const FlowCraft: React.FC = () => {
     
     const handleSubmit = () => {
       if (validate()) {
-        createSprint(formData);
+        createSprint({
+          ...formData,
+          teamId: formData.teamId || undefined, // Convert empty string to undefined
+        });
         onCancel();
       }
     };
@@ -1594,6 +1759,27 @@ const FlowCraft: React.FC = () => {
             placeholder="Enter sprint name"
           />
           {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium mb-1 text-slate-700 dark:text-slate-300">
+            Team
+          </label>
+          <select
+            value={formData.teamId}
+            onChange={(e) => setFormData({ ...formData, teamId: e.target.value })}
+            className={`${THEME.components.input} w-full px-3 py-2`}
+          >
+            <option value="">All Teams (No specific team)</option>
+            {teams.map(team => (
+              <option key={team.id} value={team.id}>
+                {team.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Optional: Assign this sprint to a specific team
+          </p>
         </div>
         
         <div className="grid grid-cols-2 gap-4">
@@ -1758,7 +1944,14 @@ const FlowCraft: React.FC = () => {
                     })()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-slate-100">
-                    {issue.assignee}
+                    <div className="flex items-center gap-2">
+                      <span>{getUserName(issue.assignee)}</span>
+                      {getUserTeam(issue.assignee) && (
+                        <span className={`inline-flex px-1.5 py-0.5 text-xs font-medium text-white rounded ${getTeamColor(getUserTeam(issue.assignee)!.id)}`}>
+                          {getUserTeam(issue.assignee)!.name}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900 dark:text-slate-100">
                     {sprints.find(s => s.id === issue.sprintId)?.name || 
@@ -1823,9 +2016,16 @@ const FlowCraft: React.FC = () => {
         <Card className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                {activeSprint.name}
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                  {activeSprint.name}
+                </h2>
+                {activeSprint.teamId && (
+                  <span className={`inline-flex px-2 py-0.5 text-xs font-medium text-white rounded ${getTeamColor(activeSprint.teamId)}`}>
+                    {getTeamName(activeSprint.teamId)}
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 {activeSprint.startDate} - {activeSprint.endDate}
               </p>
@@ -1894,7 +2094,7 @@ const FlowCraft: React.FC = () => {
                         </h4>
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-slate-500 dark:text-slate-400">
-                            {issue.assignee}
+                            {getUserName(issue.assignee)}
                           </span>
                           <button
                             onClick={() => setEditingIssue(issue)}
@@ -1938,9 +2138,16 @@ const FlowCraft: React.FC = () => {
               <Card key={sprint.id} className="p-6" hover>
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                      {sprint.name}
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                        {sprint.name}
+                      </h3>
+                      {sprint.teamId && (
+                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium text-white rounded ${getTeamColor(sprint.teamId)}`}>
+                          {getTeamName(sprint.teamId)}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                       {sprint.startDate} - {sprint.endDate}
                     </p>
@@ -2071,6 +2278,11 @@ const FlowCraft: React.FC = () => {
                   <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
                     {sprint.name}
                   </h2>
+                  {sprint.teamId && (
+                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium text-white rounded ${getTeamColor(sprint.teamId)}`}>
+                      {getTeamName(sprint.teamId)}
+                    </span>
+                  )}
                   <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
                     sprint.status === 'active' 
                       ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
@@ -2198,7 +2410,7 @@ const FlowCraft: React.FC = () => {
                           
                           <div className="flex items-center justify-between">
                             <span className="text-xs text-slate-500 dark:text-slate-400">
-                              {issue.assignee}
+                              {getUserName(issue.assignee)}
                             </span>
                             <div className="flex items-center gap-1">
                               {canMoveThis && (
@@ -2314,8 +2526,21 @@ const FlowCraft: React.FC = () => {
             {currentView === 'sprints' && APP_CONFIG.features.sprints && (
               viewingSprintId ? renderSprintDetailView(viewingSprintId) : renderSprintsView()
             )}
+            {currentView === 'team-management' && (
+              <UserManagement
+                users={users}
+                teams={teams}
+                onCreateUser={createUser}
+                onUpdateUser={updateUser}
+                onDeleteUser={deleteUser}
+                onCreateTeam={createTeam}
+                onUpdateTeam={updateTeam}
+                onDeleteTeam={deleteTeam}
+                getTeamUsers={getTeamUsers}
+              />
+            )}
             {currentView === 'executive-briefing' && (
-              <ExecutiveBriefing issues={issues} sprints={sprints} />
+              <ExecutiveBriefing issues={issues} sprints={sprints} users={users} teams={teams} />
             )}
             {APP_CONFIG.features.mitosis && currentView === 'cell-workspace' && mitosisState && getCurrentCell() && (
               <CellWorkspace

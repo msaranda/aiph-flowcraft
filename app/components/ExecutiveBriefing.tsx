@@ -22,15 +22,17 @@ import {
 import { ExecutiveBriefingOutput } from '@/app/lib/briefingPrompt';
 import { copyToClipboard, exportToPDF, briefingToSlack } from '@/app/lib/exportUtils';
 import BriefingFeedback from './BriefingFeedback';
-import { FlowCraftIssue, FlowCraftSprint } from '@/app/lib/dataTransform';
+import { FlowCraftIssue, FlowCraftSprint, FlowCraftUser, FlowCraftTeam } from '@/app/lib/dataTransform';
 
 interface ExecutiveBriefingProps {
   onClose?: () => void;
   issues?: FlowCraftIssue[];
   sprints?: FlowCraftSprint[];
+  users?: FlowCraftUser[];
+  teams?: FlowCraftTeam[];
 }
 
-export default function ExecutiveBriefing({ onClose, issues, sprints }: ExecutiveBriefingProps) {
+export default function ExecutiveBriefing({ onClose, issues, sprints, users, teams }: ExecutiveBriefingProps) {
   const [briefing, setBriefing] = useState<ExecutiveBriefingOutput | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export default function ExecutiveBriefing({ onClose, issues, sprints }: Executiv
   // Fetch briefing on mount and when scenario or data changes
   useEffect(() => {
     generateBriefing();
-  }, [scenario, issues, sprints, useRealData]);
+  }, [scenario, issues, sprints, users, teams, useRealData]);
   
   const generateBriefing = async () => {
     setLoading(true);
@@ -58,6 +60,8 @@ export default function ExecutiveBriefing({ onClose, issues, sprints }: Executiv
           useLLM: true,
           issues: useRealData && issues ? issues : undefined,
           sprints: useRealData && sprints ? sprints : undefined,
+          users: useRealData && users ? users : undefined,
+          teams: useRealData && teams ? teams : undefined,
         }),
       });
       

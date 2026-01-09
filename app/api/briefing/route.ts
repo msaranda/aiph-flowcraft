@@ -6,7 +6,13 @@ import {
   generateFallbackBriefing,
   ExecutiveBriefingOutput 
 } from '@/app/lib/briefingPrompt';
-import { transformFlowCraftDataToBriefingData, FlowCraftIssue, FlowCraftSprint } from '@/app/lib/dataTransform';
+import { 
+  transformFlowCraftDataToBriefingData, 
+  FlowCraftIssue, 
+  FlowCraftSprint,
+  FlowCraftUser,
+  FlowCraftTeam 
+} from '@/app/lib/dataTransform';
 
 // POST /api/briefing - Generate executive briefing
 export async function POST(request: NextRequest) {
@@ -16,12 +22,19 @@ export async function POST(request: NextRequest) {
     const useLLM = body.useLLM !== false; // Default to true
     const issues = body.issues as FlowCraftIssue[] | undefined;
     const sprints = body.sprints as FlowCraftSprint[] | undefined;
+    const users = body.users as FlowCraftUser[] | undefined;
+    const teams = body.teams as FlowCraftTeam[] | undefined;
     
     // Use real data if provided, otherwise use mock data
     let briefingData: BriefingData;
     if (issues && issues.length > 0) {
-      // Transform real FlowCraft data
-      briefingData = transformFlowCraftDataToBriefingData(issues, sprints || []);
+      // Transform real FlowCraft data with users and teams
+      briefingData = transformFlowCraftDataToBriefingData(
+        issues, 
+        sprints || [], 
+        users || [],
+        teams || []
+      );
     } else {
       // Use mock data with scenario
       briefingData = scenario 

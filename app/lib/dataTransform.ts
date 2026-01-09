@@ -1,6 +1,6 @@
 // Transform FlowCraft Issues/Sprints to BriefingData format
 
-import { BriefingData, Team, Task, TeamMember } from './mockData';
+import { BriefingData, Team as BriefingTeam, Task, TeamMember } from './mockData';
 
 // FlowCraft Issue interface (from flowcraft.tsx)
 export interface FlowCraftIssue {
@@ -9,9 +9,10 @@ export interface FlowCraftIssue {
   description: string;
   status: string;
   priority: string;
-  assignee: string;
+  assignee: string; // User ID
   sprintId: string | null;
   createdAt: string;
+  dueDate?: string;
   [key: string]: any;
 }
 
@@ -22,6 +23,25 @@ export interface FlowCraftSprint {
   startDate: string;
   endDate: string;
   createdAt: string;
+  teamId?: string;
+}
+
+// User interface matching flowcraft.tsx
+export interface FlowCraftUser {
+  id: string;
+  name: string;
+  email: string;
+  teamId: string;
+  avatar?: string;
+  role?: string;
+}
+
+// Team interface matching flowcraft.tsx
+export interface FlowCraftTeam {
+  id: string;
+  name: string;
+  color: string;
+  isDefault?: boolean;
 }
 
 // Map FlowCraft status to briefing status
@@ -43,31 +63,37 @@ function mapPriority(priority: string): 'critical' | 'high' | 'medium' | 'low' {
   return 'low';
 }
 
-// Extract team name from assignee (simple heuristic - can be improved)
-function inferTeam(assignee: string, issues: FlowCraftIssue[]): string {
-  // Group assignees by common patterns
-  const assigneeIssues = issues.filter(i => i.assignee === assignee);
-  if (assigneeIssues.length === 0) return 'Engineering';
+// Get team name for a user using actual team data
+function getTeamForUser(
+  userId: string, 
+  users: FlowCraftUser[], 
+  teams: FlowCraftTeam[]
+): string {
+  const user = users.find(u => u.id === userId);
+  if (!user) return 'Engineering'; // Default fallback
   
-  // Simple heuristic: check if assignee appears in Engineering, Design, or Product contexts
-  // For now, we'll use a simple distribution
-  const allAssignees = [...new Set(issues.map(i => i.assignee))];
-  const assigneeIndex = allAssignees.indexOf(assignee);
-  
-  // Distribute across 3 teams roughly
-  if (assigneeIndex < allAssignees.length / 3) return 'Engineering';
-  if (assigneeIndex < (allAssignees.length * 2) / 3) return 'Design';
-  return 'Product';
+  const team = teams.find(t => t.id === user.teamId);
+  return team?.name || 'Engineering';
+}
+
+// Get user name from user ID
+function getUserName(userId: string, users: FlowCraftUser[]): string {
+  const user = users.find(u => u.id === userId);
+  return user?.name || userId; // Fallback to userId if not found
 }
 
 // Transform FlowCraft issues to briefing tasks
-function transformIssuesToTasks(issues: FlowCraftIssue[], sprints: FlowCraftSprint[] = []): Task[] {
-  const today = new Date();
-  
+function transformIssuesToTasks(
+  issues: FlowCraftIssue[], 
+  sprints: FlowCraftSprint[] = [],
+  users: FlowCraftUser[] = []
+): Task[] {
   return issues.map(issue => {
-    // Calculate due date from sprint if available
+    // Use issue's dueDate if available, otherwise calculate from sprint
     let dueDate: string;
-    if (issue.sprintId) {
+    if (issue.dueDate) {
+      dueDate = issue.dueDate;
+    } else if (issue.sprintId) {
       const sprint = sprints.find(s => s.id === issue.sprintId);
       if (sprint && sprint.endDate) {
         dueDate = sprint.endDate;
@@ -87,12 +113,15 @@ function transformIssuesToTasks(issues: FlowCraftIssue[], sprints: FlowCraftSpri
                     (issue.priority.startsWith('P0') || issue.priority.startsWith('P1')) && 
                     taskHash % 5 === 0; // Deterministic: ~20% of P0/P1 in-progress tasks are blocked
     
+    // Get user name for display
+    const ownerName = getUserName(issue.assignee, users);
+    
     return {
       id: issue.id,
       title: issue.title,
       description: issue.description,
       status: mapStatus(issue.status),
-      owner: issue.assignee,
+      owner: ownerName,
       dueDate,
       createdDate: issue.createdAt,
       lastUpdated: issue.createdAt, // In real app, this would be tracked
@@ -106,16 +135,32 @@ function transformIssuesToTasks(issues: FlowCraftIssue[], sprints: FlowCraftSpri
   });
 }
 
-// Group tasks by team (inferred from assignees)
-function groupTasksByTeam(tasks: Task[], issues: FlowCraftIssue[]): Map<string, Task[]> {
+// Group tasks by team using actual user-team assignments
+function groupTasksByTeam(
+  tasks: Task[], 
+  issues: FlowCraftIssue[],
+  users: FlowCraftUser[],
+  teams: FlowCraftTeam[]
+): Map<string, Task[]> {
   const teamMap = new Map<string, Task[]>();
   
-  tasks.forEach(task => {
-    const team = inferTeam(task.owner, issues);
-    if (!teamMap.has(team)) {
-      teamMap.set(team, []);
+  // Initialize all teams with empty arrays
+  teams.forEach(team => {
+    teamMap.set(team.name, []);
+  });
+  
+  tasks.forEach((task, index) => {
+    // Get the original issue to find the user ID
+    const issue = issues[index];
+    if (!issue) return;
+    
+    // Get the team name from the user's team assignment
+    const teamName = getTeamForUser(issue.assignee, users, teams);
+    
+    if (!teamMap.has(teamName)) {
+      teamMap.set(teamName, []);
     }
-    teamMap.get(team)!.push(task);
+    teamMap.get(teamName)!.push(task);
   });
   
   return teamMap;
@@ -141,31 +186,48 @@ function calculateTeamMetrics(tasks: Task[]): { capacity: number; velocity: numb
   };
 }
 
-// Main transformation function
+// Main transformation function - updated to accept users and teams
 export function transformFlowCraftDataToBriefingData(
   issues: FlowCraftIssue[],
-  sprints: FlowCraftSprint[] = []
+  sprints: FlowCraftSprint[] = [],
+  users: FlowCraftUser[] = [],
+  fcTeams: FlowCraftTeam[] = []
 ): BriefingData {
-  const tasks = transformIssuesToTasks(issues, sprints);
-  const teamMap = groupTasksByTeam(tasks, issues);
+  // Use provided teams or default to Engineering, Design, Product
+  const teamNames = fcTeams.length > 0 
+    ? fcTeams.map(t => t.name)
+    : ['Engineering', 'Design', 'Product'];
   
-  // Create teams
-  const teams: Team[] = [];
-  const teamNames = ['Engineering', 'Design', 'Product'];
+  const tasks = transformIssuesToTasks(issues, sprints, users);
+  const teamMap = groupTasksByTeam(tasks, issues, users, fcTeams);
+  
+  // Create teams for briefing
+  const briefingTeams: BriefingTeam[] = [];
   
   teamNames.forEach((teamName, index) => {
     const teamTasks = teamMap.get(teamName) || [];
     const metrics = calculateTeamMetrics(teamTasks);
     
-    // Get unique assignees for this team
-    const assignees = [...new Set(teamTasks.map(t => t.owner))];
-    const members: TeamMember[] = assignees.map((name, i) => ({
-      id: `${teamName.toLowerCase()}-${i + 1}`,
-      name,
-      role: index === 0 ? 'Developer' : index === 1 ? 'Designer' : 'Product Manager',
-    }));
+    // Get team members from users data
+    const fcTeam = fcTeams.find(t => t.name === teamName);
+    const teamUsers = fcTeam 
+      ? users.filter(u => u.teamId === fcTeam.id)
+      : [];
     
-    teams.push({
+    const members: TeamMember[] = teamUsers.length > 0
+      ? teamUsers.map((user, i) => ({
+          id: user.id,
+          name: user.name,
+          role: user.role || (index === 0 ? 'Developer' : index === 1 ? 'Designer' : 'Product Manager'),
+        }))
+      : // Fallback: extract unique assignees from tasks
+        [...new Set(teamTasks.map(t => t.owner))].map((name, i) => ({
+          id: `${teamName.toLowerCase()}-${i + 1}`,
+          name,
+          role: index === 0 ? 'Developer' : index === 1 ? 'Designer' : 'Product Manager',
+        }));
+    
+    briefingTeams.push({
       name: teamName,
       members,
       tasks: teamTasks,
@@ -186,7 +248,7 @@ export function transformFlowCraftDataToBriefingData(
   const criticalCount = tasks.filter(t => t.priority === 'critical' && t.status !== 'done').length;
   
   return {
-    teams,
+    teams: briefingTeams,
     timeWindow: 'last_7_days',
     currentDate: today.toISOString().split('T')[0],
     totalTasks: tasks.length,
@@ -195,4 +257,3 @@ export function transformFlowCraftDataToBriefingData(
     criticalCount,
   };
 }
-
